@@ -1,33 +1,31 @@
-use std::error::Error as StdError;
+use std::error::Error;
 use std::fmt;
 
-#[derive(Debug)]
-pub enum Error {
+#[derive(Debug, PartialEq)]
+pub enum MusoError {
     NotSupported,
     EmptyComments,
-    CantInferMime,
     BadParent,
-    CantGetConfig,
+    InvalidConfigPath(String),
+    InvalidRoot(String),
     MissingTagProperty(String),
-    MissingConfigProperty(String),
 }
 
-impl fmt::Display for Error {
+impl Error for MusoError {}
+
+impl fmt::Display for MusoError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::EmptyComments => write!(f, "Empty vorbis comments!"),
-            Error::NotSupported => write!(f, "File type not supported!"),
-            Error::CantInferMime => write!(f, "Cannot infer mime from file!"),
-            Error::BadParent => write!(f, "Parent directory is invalid!"),
-            Error::CantGetConfig => write!(f, "Cannot get config directory!"),
-            Error::MissingTagProperty(prop) => {
-                write!(f, "Property \'{}\' in tags is missing!", prop)
+            MusoError::EmptyComments => write!(f, "Empty vorbis comments!"),
+            MusoError::NotSupported => write!(f, "File type not supported!"),
+            MusoError::BadParent => write!(f, "Parent directory is invalid!"),
+            MusoError::InvalidConfigPath(path) => {
+                write!(f, "Path \'{}\' is not valid for config!", path)
             }
-            Error::MissingConfigProperty(prop) => {
-                write!(f, "Property \'{}\' in config is missing!", prop)
+            MusoError::InvalidRoot(root) => write!(f, "\'{}\' as root folder is invalid!", root),
+            MusoError::MissingTagProperty(prop) => {
+                write!(f, "Property \'{}\' in tags is missing!", prop)
             }
         }
     }
 }
-
-impl StdError for Error {}
