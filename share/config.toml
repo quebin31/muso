@@ -1,12 +1,10 @@
-[config]
-watch = [ 'default','test' ]
+[watch]
+every = 1 # second(s)
+libraries = [ 'default' ]
 
 [libraries.default]
 format = '{artist}/{album}/{track} - {title}.{ext}'
 folders = ['$HOME/Music']
 
-[libraries.test]
-format = '{artist}/{album}/{track} - {title}.{ext}'
-folders = [ '$HOME/Projects/Rust/muso/music' ]
 
 
