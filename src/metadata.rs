@@ -1,43 +1,48 @@
-use std::error::Error as StdError;
-use std::path::{Path, PathBuf};
+use std::error::Error;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 use infer;
 
-use crate::error::Error;
+use crate::error::MusoError;
 
 #[derive(Debug)]
 pub struct Metadata {
-    pub artist: String,
-    pub album: String,
-    pub track: u32,
-    pub title: String,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub track: Option<u32>,
+    pub title: Option<String>,
     pub ext: String,
 }
 
 impl Metadata {
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, Box<dyn StdError>> {
-        let info = infer::Infer::new();
-        let file = info.get_from_path(&path)?.ok_or(Error::CantInferMime)?;
-        match file.mime.as_str() {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+        let mut file = File::open(&path)?;
+        let mut magic_bytes = [0; 4];
+        file.read_exact(&mut magic_bytes)?;
+
+        let infer = infer::Infer::new();
+        let ftype = infer.get(&magic_bytes).ok_or(MusoError::NotSupported)?;
+        match ftype.mime.as_str() {
             "audio/x-flac" => Metadata::from_vorbis(&path),
             "audio/mpeg" => Metadata::from_id3(&path),
-            _ => Err(Error::NotSupported.into()),
+            _ => Err(MusoError::NotSupported.into()),
         }
     }
 
-    fn from_id3(path: impl AsRef<Path>) -> Result<Self, Box<dyn StdError>> {
+    fn from_id3(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
         let tag = id3::Tag::read_from_path(path)?;
 
         let artist = if let Some(artist) = tag.album_artist() {
-            artist
+            Some(artist.to_owned())
         } else {
-            tag.artist().unwrap_or("")
-        }
-        .replace("/", "_");
+            tag.artist().map(|s| s.to_owned())
+        };
 
-        let album = tag.album().unwrap_or("").replace("/", "_");
-        let track = tag.track().unwrap_or(0);
-        let title = tag.title().unwrap_or("").replace("/", "_");
+        let album = tag.album().map(|s| s.to_owned());
+        let track = tag.track();
+        let title = tag.title().map(|s| s.to_owned());
 
         Ok(Metadata {
             artist,
@@ -48,35 +53,37 @@ impl Metadata {
         })
     }
 
-    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self, Box<dyn StdError>> {
+    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
         let tag = metaflac::Tag::read_from_path(path)?;
-        let comments = &tag.vorbis_comments().ok_or(Error::EmptyComments)?.comments;
-        let empty = "".to_owned();
+        let comments = &tag
+            .vorbis_comments()
+            .ok_or(MusoError::EmptyComments)?
+            .comments;
 
         let artist = if let Some(artist) = comments.get("ALBUMARTIST").and_then(|a| a.get(0)) {
-            artist
+            Some(artist.to_owned())
         } else {
             comments
                 .get("ARTIST")
-                .map_or("", |a| a.get(0).unwrap_or(&empty))
-        }
-        .replace("/", "_");
+                .map(|a| a.get(0).map(|s| s.to_owned()))
+                .flatten()
+        };
 
         let album = comments
             .get("ALBUM")
-            .map_or("", |a| a.get(0).unwrap_or(&empty))
-            .replace("/", "_");
+            .map(|a| a.get(0).map(|s| s.to_owned()))
+            .flatten();
 
         let track = comments
             .get("TRACKNUMBER")
-            .map_or("", |t| t.get(0).unwrap_or(&empty))
-            .parse::<u32>()
-            .unwrap_or(0);
+            .map(|t| t.get(0).map(|s| s.parse::<u32>().ok()))
+            .flatten()
+            .flatten();
 
         let title = comments
             .get("TITLE")
-            .map_or("", |t| t.get(0).unwrap_or(&empty))
-            .replace("/", "_");
+            .map(|t| t.get(0).map(|s| s.to_owned()))
+            .flatten();
 
         Ok(Metadata {
             artist,
@@ -87,27 +94,40 @@ impl Metadata {
         })
     }
 
-    pub fn build_path(&self, format: &str) -> Result<PathBuf, Error> {
-        if format.contains("{artist}") && self.artist.is_empty() {
-            Err(Error::MissingTagProperty("artist".to_owned()))
-        } else if format.contains("{album}") && self.album.is_empty() {
-            Err(Error::MissingTagProperty("album".to_owned()))
-        } else if format.contains("{track}") && self.track == 0 {
-            Err(Error::MissingTagProperty("track".to_owned()))
-        } else if format.contains("{title}") && self.title.is_empty() {
-            Err(Error::MissingTagProperty("title".to_owned()))
-        } else if format.contains("{ext}") && self.ext.is_empty() {
-            Err(Error::MissingTagProperty("ext".to_owned()))
-        } else {
-            let path = format
-                .replace("{artist}", &self.artist)
-                .replace("{album}", &self.album)
-                .replace("{track}", &self.track.to_string())
-                .replace("{title}", &self.title)
-                .replace("{ext}", &self.ext);
+    pub fn build_path(&self, format: &str) -> Result<String, MusoError> {
+        let path = format
+            .replace(
+                "{artist}",
+                &self
+                    .artist
+                    .as_ref()
+                    .ok_or_else(|| MusoError::MissingTagProperty("artist".to_owned()))?,
+            )
+            .replace(
+                "{album}",
+                &self
+                    .album
+                    .as_ref()
+                    .ok_or_else(|| MusoError::MissingTagProperty("album".to_owned()))?,
+            )
+            .replace(
+                "{track}",
+                &self
+                    .track
+                    .as_ref()
+                    .ok_or_else(|| MusoError::MissingTagProperty("track".to_owned()))?
+                    .to_string(),
+            )
+            .replace(
+                "{title}",
+                &self
+                    .title
+                    .as_ref()
+                    .ok_or_else(|| MusoError::MissingTagProperty("title".to_owned()))?,
+            )
+            .replace("{ext}", &self.ext);
 
-            Ok(path.into())
-        }
+        Ok(path)
     }
 }
 
@@ -118,15 +138,15 @@ mod tests {
     #[test]
     fn correct_path() {
         let metadata = Metadata {
-            artist: "Cage The Elephant".to_owned(),
-            album: "Social Cues".to_owned(),
-            track: 1,
-            title: "Social Cues".to_owned(),
+            artist: Some("Cage The Elephant".to_owned()),
+            album: Some("Social Cues".to_owned()),
+            track: Some(1),
+            title: Some("Social Cues".to_owned()),
             ext: "flac".to_owned(),
         };
 
         assert_eq!(
-            Some("Cage The Elephant/Social Cues/1 - Social Cues.flac".into()),
+            Ok("Cage The Elephant/Social Cues/1 - Social Cues.flac".into()),
             metadata.build_path("{artist}/{album}/{track} - {title}.{ext}")
         );
     }
@@ -134,15 +154,15 @@ mod tests {
     #[test]
     fn incorrect_path() {
         let metadata = Metadata {
-            artist: "Cage The Elephant".to_owned(),
-            album: "".to_owned(),
-            track: 1,
-            title: "Social Cues".to_owned(),
+            artist: Some("Cage The Elephant".to_owned()),
+            album: None,
+            track: Some(1),
+            title: Some("Social Cues".to_owned()),
             ext: "flac".to_owned(),
         };
 
         assert_eq!(
-            None,
+            Err(MusoError::MissingTagProperty("album".to_owned())),
             metadata.build_path("{artist}/{album}/{track} - {title}.{ext}")
         );
     }
