@@ -5,6 +5,7 @@ libraries = [ 'default' ]
 [libraries.default]
 format = '{artist}/{album}/{track} - {title}.{ext}'
 folders = ['$HOME/Music']
+exfat-compat = true
 
 
 
