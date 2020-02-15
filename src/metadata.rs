@@ -1,3 +1,20 @@
+// Copyright (C) 2020 kevin
+//
+// This file is part of muso.
+//
+// muso is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// muso is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with muso.  If not, see <http://www.gnu.org/licenses/>.
+
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
@@ -94,40 +111,66 @@ impl Metadata {
         })
     }
 
-    pub fn build_path(&self, format: &str) -> Result<String, MusoError> {
+    pub fn build_path(&self, format: &str, exfat_compat: bool) -> Result<String, MusoError> {
         let path = format
             .replace(
                 "{artist}",
-                &self
-                    .artist
-                    .as_ref()
-                    .ok_or_else(|| MusoError::MissingTagProperty("artist".to_owned()))?,
+                &replace(
+                    self.artist
+                        .as_ref()
+                        .ok_or_else(|| MusoError::MissingTagProperty("artist".to_owned()))?,
+                    exfat_compat,
+                ),
             )
             .replace(
                 "{album}",
-                &self
-                    .album
-                    .as_ref()
-                    .ok_or_else(|| MusoError::MissingTagProperty("album".to_owned()))?,
+                &replace(
+                    self.album
+                        .as_ref()
+                        .ok_or_else(|| MusoError::MissingTagProperty("album".to_owned()))?,
+                    exfat_compat,
+                ),
             )
             .replace(
                 "{track}",
-                &self
-                    .track
-                    .as_ref()
-                    .ok_or_else(|| MusoError::MissingTagProperty("track".to_owned()))?
-                    .to_string(),
+                &replace(
+                    &self
+                        .track
+                        .as_ref()
+                        .ok_or_else(|| MusoError::MissingTagProperty("track".to_owned()))?
+                        .to_string(),
+                    exfat_compat,
+                ),
             )
             .replace(
                 "{title}",
-                &self
-                    .title
-                    .as_ref()
-                    .ok_or_else(|| MusoError::MissingTagProperty("title".to_owned()))?,
+                &replace(
+                    self.title
+                        .as_ref()
+                        .ok_or_else(|| MusoError::MissingTagProperty("title".to_owned()))?,
+                    exfat_compat,
+                ),
             )
             .replace("{ext}", &self.ext);
 
         Ok(path)
+    }
+}
+
+fn replace(string: &str, exfat_compat: bool) -> String {
+    if exfat_compat {
+        string
+            .replace('/', "_")
+            .replace('"', "_")
+            .replace('*', "_")
+            .replace(':', "_")
+            .replace('<', "_")
+            .replace('>', "_")
+            .replace('\\', "_")
+            .replace('?', "_")
+            .replace('|', "_")
+    } else {
+        string.replace('/', "_")
     }
 }
 
@@ -147,7 +190,7 @@ mod tests {
 
         assert_eq!(
             Ok("Cage The Elephant/Social Cues/1 - Social Cues.flac".into()),
-            metadata.build_path("{artist}/{album}/{track} - {title}.{ext}")
+            metadata.build_path("{artist}/{album}/{track} - {title}.{ext}", false)
         );
     }
 
@@ -163,7 +206,7 @@ mod tests {
 
         assert_eq!(
             Err(MusoError::MissingTagProperty("album".to_owned())),
-            metadata.build_path("{artist}/{album}/{track} - {title}.{ext}")
+            metadata.build_path("{artist}/{album}/{track} - {title}.{ext}", false)
         );
     }
 }

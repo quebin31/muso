@@ -1,9 +1,26 @@
+// Copyright (C) 2020 kevin
+//
+// This file is part of muso.
+//
+// muso is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// muso is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with muso.  If not, see <http://www.gnu.org/licenses/>.
+
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::error::Error;
 use std::fs::{create_dir_all, read_dir, rename};
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -21,6 +38,12 @@ use crate::metadata;
 #[derive(Debug)]
 pub struct Muso {
     config: Config,
+    path: PathBuf,
+    format: String,
+    watch: bool,
+    dryrun: bool,
+    recursive: bool,
+    exfat_compat: bool,
 }
 
 impl Muso {
@@ -56,21 +79,23 @@ impl Muso {
         let watch = matches.is_present("watch");
         let dryrun = matches.is_present("dryrun");
         let recursive = matches.is_present("recursive");
+        let exfat_compat = matches.is_present("exfatcompat");
 
-        config.set("path", path)?;
-        config.set("format", format)?;
-        config.set("dryrun", dryrun)?;
-        config.set("watchmode", watch)?;
-        config.set("recursive", recursive)?;
+        let mut muso = Self {
+            config,
+            path: path.into(),
+            format,
+            watch,
+            dryrun,
+            recursive: recursive || watch,
+            exfat_compat,
+        };
 
-        let muso = Self { config };
         muso.run_inner()
     }
 
-    fn run_inner(&self) -> Result<(), Box<dyn Error>> {
-        let watch = self.config.get_bool("watchmode").unwrap_or(false);
-
-        if watch {
+    fn run_inner(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.watch {
             let libraries = self.config.get_array("watch.libraries").unwrap_or_default();
 
             if libraries.is_empty() {
@@ -105,28 +130,22 @@ impl Muso {
             }
 
             self.watch_loop(rx, related_library)
+        } else if self.path.is_dir() {
+            self.sort_folder(&self.path, &self.path)
+                .map(|(success, total)| {
+                    info!("Done: {} successful out of {}", success, total);
+                })
+                .map_err(|e| {
+                    error!("{}", e);
+                    e
+                })
         } else {
-            let path = self.config.get_str("path")?;
-            let path = Path::new(&path);
-
-            if !path.is_dir() {
-                Err(MusoError::InvalidRoot(path.to_string_lossy().to_string()).into())
-            } else {
-                let recursive = self.config.get_bool("recursive")?;
-                self.sort_folder(path, path, None, recursive)
-                    .map(|(success, total)| {
-                        info!("Done: {} successful out of {}", success, total);
-                    })
-                    .map_err(|e| {
-                        error!("{}", e);
-                        e
-                    })
-            }
+            Err(MusoError::InvalidRoot(self.path.to_string_lossy().to_string()).into())
         }
     }
 
     fn watch_loop(
-        &self,
+        &mut self,
         rx: mpsc::Receiver<DebouncedEvent>,
         related_library: HashMap<String, String>,
     ) -> Result<(), Box<dyn Error>> {
@@ -143,27 +162,29 @@ impl Muso {
                             }
 
                             let library = Some(related_library[ancestor.as_ref()].as_str());
+                            if let Some(library) = library {
+                                self.format = self
+                                    .config
+                                    .get_str(&format!("libraries.{}.format", library))
+                                    .ok()
+                                    .unwrap_or_else(|| self.format.clone());
+
+                                self.exfat_compat = self
+                                    .config
+                                    .get_bool(&format!("libraries.{}.exfat-compat", library))
+                                    .ok()
+                                    .unwrap_or_else(|| self.exfat_compat);
+                            }
+
                             if path.is_dir() {
-                                match self.sort_folder(
-                                    Path::new(ancestor.as_ref()),
-                                    &path,
-                                    library,
-                                    true,
-                                ) {
+                                match self.sort_folder(Path::new(ancestor.as_ref()), &path) {
                                     Ok((success, total)) => {
                                         info!("Done: {} successful out of {}", success, total)
                                     }
                                     Err(e) => error!("{}", e),
                                 }
                             } else {
-                                let format = if let Some(library) = library {
-                                    self.config
-                                        .get_str(&format!("libraries.{}.format", library))?
-                                } else {
-                                    self.config.get_str("format")?
-                                };
-
-                                match self.sort_file(Path::new(ancestor.as_ref()), &path, &format) {
+                                match self.sort_file(Path::new(ancestor.as_ref()), &path) {
                                     Ok(()) => info!("Done: 1 successful out of 1"),
                                     Err(e) => error!("{}", e),
                                 }
@@ -178,28 +199,15 @@ impl Muso {
         }
     }
 
-    fn sort_folder(
-        &self,
-        root: &Path,
-        folder: &Path,
-        library: Option<&str>,
-        recursive: bool,
-    ) -> Result<(usize, usize), Box<dyn Error>> {
-        let format = if let Some(library) = library {
-            self.config
-                .get_str(&format!("libraries.{}.format", library))?
-        } else {
-            self.config.get_str("format")?
-        };
-
+    fn sort_folder(&self, root: &Path, folder: &Path) -> Result<(usize, usize), Box<dyn Error>> {
         let results = read_dir(folder)?
             .par_bridge()
             .map(|entry| -> (usize, usize) {
                 let entry = entry.expect("Cannot get entry!");
                 let file_type = entry.file_type().expect("Cannot get file type!");
 
-                if file_type.is_dir() && recursive {
-                    match self.sort_folder(root, &entry.path(), library, recursive) {
+                if file_type.is_dir() && self.recursive {
+                    match self.sort_folder(root, &entry.path()) {
                         Ok(result) => result,
                         Err(e) => {
                             error!("{}", e);
@@ -207,7 +215,7 @@ impl Muso {
                         }
                     }
                 } else if file_type.is_file() {
-                    match self.sort_file(root.as_ref(), &entry.path(), &format) {
+                    match self.sort_file(root.as_ref(), &entry.path()) {
                         Ok(_) => (1, 1),
                         Err(e) => {
                             error!("{}", e);
@@ -232,12 +240,11 @@ impl Muso {
         Ok((success, total))
     }
 
-    fn sort_file(&self, root: &Path, file: &Path, format: &str) -> Result<(), Box<dyn Error>> {
+    fn sort_file(&self, root: &Path, file: &Path) -> Result<(), Box<dyn Error>> {
         let metadata = metadata::Metadata::from_path(file)?;
-        let new_path = metadata.build_path(format)?;
+        let new_path = metadata.build_path(&self.format, self.exfat_compat)?;
 
-        let dryrun = self.config.get_bool("dryrun").unwrap_or(false);
-        if dryrun {
+        if self.dryrun {
             info!("Dry run on: \'{}\'", file.to_string_lossy());
             info!("Item created: \'{}\'", new_path);
         } else {
