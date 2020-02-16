@@ -1,10 +1,14 @@
 [watch]
 every = 1 # second(s)
+# Specifies which libraries will be seen by muso
 libraries = [ 'default' ]
 
 [libraries.default]
+# Specified format that will be used for this library
 format = '{artist}/{album}/{track} - {title}.{ext}'
+# Folders that compose this library
 folders = ['$HOME/Music']
+# If enabled, the rename will be compatible with exFAT 
 exfat-compat = true
 
 
