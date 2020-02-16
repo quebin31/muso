@@ -1,8 +1,11 @@
 name: Build binary
 
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - master
+#  release:
+#    types: [created]
 
 jobs:
   build:
@@ -18,7 +21,8 @@ jobs:
         run: cargo build --release
       - name: Generate tarball
         run: |
-          tar czf release.tar.gz share __w/muso/muso
+          ls -la
+          tar czf release.tar.gz share
       - uses: actions/upload-artifact@v1
         with:
           name: release
