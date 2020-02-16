@@ -1,15 +1,18 @@
 name: Build binary
 
-on: [release]
+on:
+  release:
+    types: [created]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    container:
+      image: rust:latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --release
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v2
+      - name: Build release
+        run: cargo build --release
+      - name: Run tests
+        run: cargo test --verbose
