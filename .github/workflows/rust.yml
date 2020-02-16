@@ -12,7 +12,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Run tests
+        run: cargo test
       - name: Build release
         run: cargo build --release
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Generate tarball
+        run: |
+          tar czf release.tar.gz share __w/muso/muso
+      - uses: actions/upload-artifact@v1
+        with:
+          name: release
+          path: release.tar.gz
