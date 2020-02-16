@@ -1,11 +1,8 @@
 name: Build binary
 
 on:
-  push:
-    branches:
-      - master
-#  release:
-#    types: [created]
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -20,10 +17,11 @@ jobs:
       - name: Build release
         run: cargo build --release
       - name: Generate tarball
-        run: |
-          tar czf release.tar.gz share target/release/muso
-      - name: Upload tarball as artifact
-        uses: actions/upload-artifact@v1
+        run: tar czf release.tar.gz share target/release/muso
+      - name: Release tarball
+        uses: Roang-zero1/github-upload-release-artifacts-action@master
         with:
-          name: release
-          path: release.tar.gz
+          args:
+            - release.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
