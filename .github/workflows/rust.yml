@@ -21,7 +21,6 @@ jobs:
       - name: Release tarball
         uses: Roang-zero1/github-upload-release-artifacts-action@master
         with:
-          args:
-            - release.tar.gz
+          args: release.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
