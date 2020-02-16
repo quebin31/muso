@@ -21,9 +21,9 @@ jobs:
         run: cargo build --release
       - name: Generate tarball
         run: |
-          ls -la
-          tar czf release.tar.gz share
-      - uses: actions/upload-artifact@v1
+          tar czf release.tar.gz share target/release/muso
+      - name: Upload tarball as artifact
+        uses: actions/upload-artifact@v1
         with:
           name: release
           path: release.tar.gz
