@@ -1,0 +1,11 @@
+name: Commit PKGBUILD
+description: Prepare .SRCINFO and commit files
+inputs:
+  target:
+    description: The target directory
+    required: true
+runs:
+  using: docker
+  image: Dockerfile
+  args:
+    - ${{ inputs.target }}
