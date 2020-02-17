@@ -24,9 +24,9 @@ jobs:
       - name: Check ssh dir
         run: |
           ls ~/.ssh
-          cat known_hosts
-          cat config
-          cat aur
+          cat ~/.ssh/known_hosts
+          cat ~/.ssh/config
+          cat ~/.ssh/aur
       - name: Checkout pkgbuild submodule
         env:
           GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostingKeyChecking=no
