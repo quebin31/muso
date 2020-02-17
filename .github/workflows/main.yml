@@ -15,13 +15,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Check git version
-        run: git --version
       - name: Init SSH key and hosts
         uses: kielabokkie/ssh-key-and-known-hosts-action@v1
         with:
           ssh-private-key: ${{ secrets.SSH_AUR_KEY }}
           ssh-host: aur.archlinux.org
+      - name: Check ssh dir
+        run: ls ~/.ssh
       - name: Checkout pkgbuild submodule
         run: git submodule update --init --force --depth=1
       - name: Run tests
