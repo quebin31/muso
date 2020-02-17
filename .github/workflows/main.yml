@@ -13,7 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Checkout pkgbuild submodule
-        run: git submodule update --init --force --depth=1
+        run: |
+          echo $SSH_AUR_KEY > ssh.key
+          git config --local core.sshCommand "ssh -i $(pwd)/ssh.key -F /dev/null"
+          git submodule update --init --force --depth=1
+        env:
+          SSH_AUR_KEY: ${{ secrets.SSH_AUR_KEY }}
       - name: Run tests
         run: cargo test
       - name: Build binary
