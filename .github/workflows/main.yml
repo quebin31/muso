@@ -21,19 +21,20 @@ jobs:
           key: ${{ secrets.SSH_AUR_KEY }}
           name: aur
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
-          config: ${{ secrets.SSH_CONFIG }}
       - name: Check ssh dir
         run: ls ~/.ssh
       - name: Checkout pkgbuild submodule
+        env:
+          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur
         run: git submodule update --init --force --depth=1
+      - name: Check GIT_REF
+        run: echo $GIT_REF; false
       - name: Run tests
         run: cargo test
       - name: Build binary
         run: cargo build --release
       - name: Generate tarball
         run: tar czf release.tar.gz share target/release/muso
-      - name: Check GIT_REF
-        run: echo $GIT_REF; false
       - name: Update PKGBUILD
         run: |
           sha256sum=$(sha256sum release.tar.gz)
