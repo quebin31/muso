@@ -8,7 +8,9 @@ cd "$target"
 
 namcap PKGBUILD && makepkg --printsrcinfo > .SRCINFO
 
+export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no"
 git config --local user.email "action@github.com"
 git config --local user.name "GitHub Action"
 git commit -m "Updated from actions" -a
 git push origin master
+unset GIT_SSH_COMMAND
