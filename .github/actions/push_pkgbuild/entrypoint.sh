@@ -10,7 +10,8 @@ cd "$target"
 namcap PKGBUILD && makepkg --printsrcinfo > .SRCINFO
 
 echo $sshkey > ssh.key
-git config core.sshCommand "ssh -i $(pwd)/ssh.key -F /dev/null"
+chmod 400 ssh.key
+git config --local core.sshCommand "ssh -i $(pwd)/ssh.key -F /dev/null -o StrictHostKeyChecking=no"
 git config --local user.email "action@github.com"
 git config --local user.name "GitHub Action"
 git commit -m "Updated from actions" -a
