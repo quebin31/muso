@@ -1,0 +1,3 @@
+[submodule "pkgbuild"]
+	path = pkgbuild
+	url = git@github.com:quebin31/muso-pkgbuild.git
