@@ -4,12 +4,8 @@ inputs:
   target:
     description: The target directory
     required: true
-  sshkey:
-    description: SSH identity key
-    required: true
 runs:
   using: docker
   image: Dockerfile
   args:
     - ${{ inputs.target }}
-    - ${{ inputs.sshkey }}

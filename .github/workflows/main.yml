@@ -17,14 +17,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Check git version
         run: git --version
+      - name: Init SSH key and hosts
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.SSH_AUR_KEY }}
+          ssh-host: aur.archlinux.org
       - name: Checkout pkgbuild submodule
-        run: |
-          echo $SSH_AUR_KEY > ssh.key
-          chmod 400 ssh.key
-          export GIT_SSH_COMMAND="ssh -i $(pwd)/ssh.key -F /dev/null -o StrictHostKeyChecking=no"
-          git submodule update --init --force --depth=1
-        env:
-          SSH_AUR_KEY: ${{ secrets.SSH_AUR_KEY }}
+        run: git submodule update --init --force --depth=1
       - name: Run tests
         run: cargo test
       - name: Build binary
@@ -44,7 +43,6 @@ jobs:
       - name: Commit & push PKGBUILD
         uses: ./github/actions/push_pkgbuild
         with:
-          target: pkgbuild
           sshkey: ${{ secrets.SSH_AUR_KEY }}
       - name: Upload tarball to release
         uses: yakuhzi/action-release@v1
