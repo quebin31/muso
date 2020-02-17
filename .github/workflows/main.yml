@@ -1,6 +1,9 @@
 name: Build release
 
 on:
+  push:
+    branches:
+      - master
   release:
     types: [created]
 
@@ -17,7 +20,7 @@ jobs:
       - name: Checkout pkgbuild submodule
         run: |
           echo $SSH_AUR_KEY > ssh.key
-          GIT_SSH_COMMAND="ssh -i $(pwd)/ssh.key -F /dev/null" git submodule update --init --force --depth=1
+          GIT_SSH_COMMAND="ssh -i $(pwd)/ssh.key -F /dev/null -o StrictHostKeyChecking=no" git submodule update --init --force --depth=1
         env:
           SSH_AUR_KEY: ${{ secrets.SSH_AUR_KEY }}
       - name: Run tests
