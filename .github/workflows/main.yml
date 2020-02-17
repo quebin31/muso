@@ -16,10 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Init SSH key and hosts
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        uses: shimataro/ssh-key-action@v2
         with:
-          ssh-private-key: ${{ secrets.SSH_AUR_KEY }}
-          ssh-host: aur.archlinux.org
+          key: ${{ secrets.SSH_AUR_KEY }}
+          name: id_rsa
+          known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Check ssh dir
         run: ls ~/.ssh
       - name: Checkout pkgbuild submodule
