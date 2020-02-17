@@ -22,8 +22,8 @@ jobs:
         env:
           GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no
         run: git submodule update --init --force --depth=1
-      - name: Check GIT_REF
-        run: echo $GIT_REF; false
+      - name: Check GITHUB_REF
+        run: echo $GITHUB_REF; false
       - name: Run tests
         run: cargo test
       - name: Build binary
