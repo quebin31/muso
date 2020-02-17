@@ -22,10 +22,14 @@ jobs:
           name: aur
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Check ssh dir
-        run: ls ~/.ssh
+        run: |
+          ls ~/.ssh
+          cat known_hosts
+          cat config
+          cat aur
       - name: Checkout pkgbuild submodule
         env:
-          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur
+          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostingKeyChecking=no
         run: git submodule update --init --force --depth=1
       - name: Check GIT_REF
         run: echo $GIT_REF; false
