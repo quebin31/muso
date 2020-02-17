@@ -19,8 +19,9 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_AUR_KEY }}
-          name: id_rsa
+          name: aur
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
+          config: ${{ secrets.SSH_CONFIG }}
       - name: Check ssh dir
         run: ls ~/.ssh
       - name: Checkout pkgbuild submodule
