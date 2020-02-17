@@ -1,0 +1,52 @@
+name: Build release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout submodules
+        shell: bash
+        run: |
+          # If your submodules are configured to use SSH instead of HTTPS please uncomment the following line
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+          git submodule sync --recursive
+          git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+      - name: Run tests
+        run: cargo test
+      - name: Build binary
+        run: cargo build --release
+      - name: Generate tarball
+        run: tar czf release.tar.gz share target/release/muso
+      - name: Update PKGBUILD
+        run: |
+          sha256sum=$(sha256sum release.tar.gz)
+          cd pkgbuild
+
+          sed -i -E "s/(pkgver=).*/\1$GIT_REF" PKGBUILD
+          sed -i -E "s/(pkgrel=).*/\11" PKGBUILD
+          sed -i -E "s/(sha256sums=).*/\1('$sha256sum')" PKGBUILD
+      - name: Commit PKGBUILD
+        uses: ./github/actions/commit_pkgbuild
+        with:
+          target: pkgbuild
+      - name: Push changes on submodule pkgbuild
+        uses: ad-m/github-push-action@master
+        with:
+          directory: pkgbuild
+          repository: muso-pkgbuild
+          github_token: ${{ secrets.GITHUB_TOKEN_PKGBUILD }}
+      - name: Upload tarball to release
+        uses: yakuhzi/action-release@v1
+        with:
+          file: release.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
