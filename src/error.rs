@@ -40,7 +40,7 @@ impl fmt::Display for MusoError {
             MusoError::MissingTagProperty(prop) => {
                 write!(f, "Property \'{}\' in tags is missing!", prop)
             }
-            MusoError::ResourceNotFound(res) => write!(f, "Resource \'{}\' was\'t found", res),
+            MusoError::ResourceNotFound(res) => write!(f, "Resource \'{}\' wasn\'t found", res),
         }
     }
 }
