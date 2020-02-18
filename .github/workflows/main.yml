@@ -1,4 +1,4 @@
-name: Build release
+name: Build (and publish)
 
 on:
   push:
@@ -13,6 +13,7 @@ jobs:
       image: rust:latest
 
     steps:
+      - uses: actions/checkout@v2
       - name: Build
         run: cargo build
       - name: Run tests
