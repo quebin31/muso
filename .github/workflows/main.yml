@@ -38,9 +38,9 @@ jobs:
           sed -i -E "s/(pkgrel=).*/\11/" PKGBUILD
           sed -i -E "s/(sha256sums=).*/\1('$sha256sum')/" PKGBUILD
       - name: Commit & push PKGBUILD
-        uses: ./github/actions/push_pkgbuild
+        uses: ./.github/actions/push_pkgbuild
         with:
-          sshkey: ${{ secrets.SSH_AUR_KEY }}
+          target: pkgbuild
       - name: Upload tarball to release
         uses: yakuhzi/action-release@v1
         with:
