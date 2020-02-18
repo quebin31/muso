@@ -1,12 +1,26 @@
 name: Build release
 
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - master
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads')
+    container:
+      image: rust:latest
+
+    steps:
+      - name: Build
+        run: cargo build
+      - name: Run tests
+        run: cargo test
+
+  build_and_publish:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags')
     container:
       image: rust:latest
 
@@ -37,13 +51,24 @@ jobs:
           sed -i -E "s/(pkgver=).*/\1$version/" PKGBUILD
           sed -i -E "s/(pkgrel=).*/\11/" PKGBUILD
           sed -i -E "s/(sha256sums=).*/\1('$sha256sum')/" PKGBUILD
-      - name: Commit & push PKGBUILD
-        uses: ./.github/actions/push_pkgbuild
+      - name: Generate .SRCINFO
+        uses: ./.github/actions/generate_srcinfo
         with:
           target: pkgbuild
-      - name: Upload tarball to release
-        uses: yakuhzi/action-release@v1
+      - name: Publish to AUR
+        env:
+          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
+        run: |
+          cd pkgbuild
+
+          version=$(echo $GITHUB_REF | cut -d '/' -f3)
+          git config --local user.email "quebin31@gmail.com"
+          git config --local user.name "Kevin (CI/CD)"
+          git commit -m "updver: $version" -a
+          git push origin master
+      - name: Create release
+        uses: softprops/action-gh-release@v1
         with:
-          file: release.tar.gz
+          files: release.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
