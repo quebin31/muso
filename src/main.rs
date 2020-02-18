@@ -40,13 +40,15 @@ fn main() {
         (author: AUTHORS)
         (about: ABOUT)
         (@arg path: !required "Working path to sort")
-        (@arg format: -f --format +takes_value "Custom naming format")
+        (@arg format: -f --format +takes_value "Custom format string")
         (@arg config: -C --config +takes_value "Custom config file location")
         (@arg watch: -w --watch "Watch libraries present in config")
         (@arg dryrun: -d --dryrun "Don\'t create neither move anything")
         (@arg recursive: -r --recursive "Search for files recursively")
         (@arg exfatcompat: --("exfat-compat") "Maintain names compatible with FAT32")
-        (@arg copyservice: --("copy-service") "Copy service file to systemd user config dir")
+        (@arg copyservice: --("copy-service") conflicts_with[format config
+            watch dryrun recursive exfatcompat path]
+            "Copy service file to systemd user config dir, nothing else")
     }
     .get_matches();
 
