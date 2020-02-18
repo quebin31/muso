@@ -18,8 +18,9 @@
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::error::Error;
-use std::fs::{create_dir_all, read_dir, rename};
-use std::io;
+use std::fs::File;
+use std::fs::{copy, create_dir_all, read_dir, rename};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
@@ -56,12 +57,30 @@ impl Muso {
             |v| v.to_owned(),
         );
 
-        if !Path::new(&config_path).exists() {
-            return Err(MusoError::InvalidConfigPath(config_path).into());
+        let config_path = Path::new(&config_path);
+        if !config_path.exists() {
+            let shared_config = Path::new("/usr/share/muso/config.toml");
+            let config_dir = dirs::config_dir().unwrap().join("muso");
+            if !shared_config.exists() {
+                maybe_create_dir(config_dir)?;
+                let mut file = File::create(&config_path)?;
+                write!(file, "{}", include_str!("../share/config.toml"))?;
+            } else if config_path.starts_with(config_dir.to_string_lossy().as_ref()) {
+                info!("Copying config from shared assets");
+                maybe_create_dir(config_dir)?;
+                copy(shared_config, config_path)?;
+            } else {
+                return Err(
+                    MusoError::ResourceNotFound(config_path.to_string_lossy().to_string()).into(),
+                );
+            }
         }
 
         let mut config = Config::default();
-        config.merge(config::File::new(&config_path, config::FileFormat::Toml))?;
+        config.merge(config::File::new(
+            &config_path.to_string_lossy(),
+            config::FileFormat::Toml,
+        ))?;
         sanitize_paths(&mut config)?;
 
         let path = matches
@@ -80,6 +99,26 @@ impl Muso {
         let dryrun = matches.is_present("dryrun");
         let recursive = matches.is_present("recursive");
         let exfat_compat = matches.is_present("exfatcompat");
+        let copy_service = matches.is_present("copyservice");
+
+        if copy_service {
+            let shared_service = Path::new("/usr/share/muso/muso.service");
+
+            let systemd_path = format! {
+                "{}/systemd/user/muso.service",
+                dirs::config_dir().unwrap().to_string_lossy()
+            };
+
+            if !shared_service.exists() {
+                let mut file = File::create(&systemd_path)?;
+                write!(file, "{}", include_str!("../share/muso.service"))?;
+            } else {
+                info!("Copying service file from shared assets");
+                copy(shared_service, systemd_path)?;
+            }
+
+            return Ok(());
+        }
 
         let mut muso = Self {
             config,

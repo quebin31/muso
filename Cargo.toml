@@ -1,6 +1,6 @@
 [package]
 name = "muso"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Kevin <quebin31@gmail.com>"]
 edition = "2018"
 
