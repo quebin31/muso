@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build
-        run: cargo build --no-default-features
+        run: cargo build
       - name: Run tests
         run: cargo test
 
@@ -43,7 +43,7 @@ jobs:
       - name: Run tests
         run: cargo test
       - name: Build binary
-        run: cargo build --no-default-features --release
+        run: cargo build --release
       - name: Generate tarball
         run: tar czf release.tar.gz share target/release/muso
       - name: Update PKGBUILD
