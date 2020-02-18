@@ -49,6 +49,35 @@ pub struct Muso {
 
 impl Muso {
     pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+        let copy_service = matches.is_present("copyservice");
+
+        if copy_service {
+            let shared_service = Path::new("/usr/share/muso/muso.service");
+
+            let systemd_path = format! {
+                "{}/systemd/user/muso.service",
+                dirs::config_dir().unwrap().to_string_lossy()
+            };
+
+            if !shared_service.exists() {
+                if cfg!(feature = "standalone") {
+                    info!("Writing service file");
+                    let mut file = File::create(&systemd_path)?;
+                    write!(file, "{}", include_str!("../share/muso.service"))?;
+                } else {
+                    return Err(MusoError::ResourceNotFound(
+                        shared_service.to_string_lossy().to_string(),
+                    )
+                    .into());
+                }
+            } else {
+                info!("Copying service file from shared assets");
+                copy(shared_service, systemd_path)?;
+            }
+
+            return Ok(());
+        }
+
         let config_path = matches.value_of("config").map_or(
             format! {
                 "{}/muso/config.toml",
@@ -62,9 +91,17 @@ impl Muso {
             let shared_config = Path::new("/usr/share/muso/config.toml");
             let config_dir = dirs::config_dir().unwrap().join("muso");
             if !shared_config.exists() {
-                maybe_create_dir(config_dir)?;
-                let mut file = File::create(&config_path)?;
-                write!(file, "{}", include_str!("../share/config.toml"))?;
+                if cfg!(feature = "standalone") {
+                    info!("Writing default config");
+                    maybe_create_dir(config_dir)?;
+                    let mut file = File::create(&config_path)?;
+                    write!(file, "{}", include_str!("../share/config.toml"))?;
+                } else {
+                    return Err(MusoError::ResourceNotFound(
+                        shared_config.to_string_lossy().to_string(),
+                    )
+                    .into());
+                }
             } else if config_path.starts_with(config_dir.to_string_lossy().as_ref()) {
                 info!("Copying config from shared assets");
                 maybe_create_dir(config_dir)?;
@@ -99,26 +136,6 @@ impl Muso {
         let dryrun = matches.is_present("dryrun");
         let recursive = matches.is_present("recursive");
         let exfat_compat = matches.is_present("exfatcompat");
-        let copy_service = matches.is_present("copyservice");
-
-        if copy_service {
-            let shared_service = Path::new("/usr/share/muso/muso.service");
-
-            let systemd_path = format! {
-                "{}/systemd/user/muso.service",
-                dirs::config_dir().unwrap().to_string_lossy()
-            };
-
-            if !shared_service.exists() {
-                let mut file = File::create(&systemd_path)?;
-                write!(file, "{}", include_str!("../share/muso.service"))?;
-            } else {
-                info!("Copying service file from shared assets");
-                copy(shared_service, systemd_path)?;
-            }
-
-            return Ok(());
-        }
 
         let mut muso = Self {
             config,
@@ -168,6 +185,7 @@ impl Muso {
                 }
             }
 
+            info!("Watching libraries...");
             self.watch_loop(rx, related_library)
         } else if self.path.is_dir() {
             self.sort_folder(&self.path, &self.path)

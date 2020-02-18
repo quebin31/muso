@@ -22,3 +22,7 @@ ansi_term = "0.12.1"
 version = "0.10.1"
 default-features = false 
 features = [ "toml" ]
+
+[features]
+default = [ "standalone" ]
+standalone = []
