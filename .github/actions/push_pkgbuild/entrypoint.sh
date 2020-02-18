@@ -1,3 +1,5 @@
+#!/bin/sh -l
+
 target=$1
 
 # '/github/workspace' is mounted as a volume and has owner set to root
