@@ -67,8 +67,8 @@ jobs:
           git config --local user.email "quebin31@gmail.com"
           git config --local user.name "Kevin (CI/CD)"
           git commit -m "updver: $version" -a
-          git push origin master
-      - name: Create release
+          git push origin HEAD:refs/head/master
+      - name: Publish to GitHub
         uses: softprops/action-gh-release@v1
         with:
           files: release.tar.gz
