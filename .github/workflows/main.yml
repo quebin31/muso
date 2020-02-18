@@ -22,8 +22,6 @@ jobs:
         env:
           GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
         run: git submodule update --init --force --depth=1
-      - name: End early, testing ssh knonw_hosts
-        run: "false"
       - name: Run tests
         run: cargo test
       - name: Build binary
