@@ -23,6 +23,7 @@ mod muso;
 use std::process;
 
 use clap::clap_app;
+use human_panic::setup_panic;
 use log::error;
 
 use crate::logger::init_logger;
@@ -33,6 +34,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 fn main() {
+    setup_panic!();
     init_logger().unwrap();
 
     let matches = clap_app! { muso =>
