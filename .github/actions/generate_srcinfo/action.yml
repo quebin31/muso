@@ -1,5 +1,5 @@
-name: Commit & push pkgbuild
-description: Prepare .SRCINFO and commit files for push
+name: Generate .SRCINFO for package
+description: Verify PKGBUILD and generate .SRCINFO
 inputs:
   target:
     description: The target directory
