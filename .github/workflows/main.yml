@@ -48,7 +48,7 @@ jobs:
         run: tar czf release.tar.gz share target/release/muso
       - name: Update PKGBUILD
         run: |
-          sha256sum=$(sha256sum release.tar.gz)
+          sha256sum=$(sha256sum release.tar.gz | cut -d ' ' -f1)
           version=$(echo $GITHUB_REF | cut -d '/' -f3)
           cd pkgbuild
 
