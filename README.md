@@ -31,6 +31,33 @@ designed to be simple and fast, but also powerful and fully automated.
 Currently **muso** supports MP3 and FLAC, but in the future it's planned to
 support most codecs for audio.
 
+## Building
+To build **muso** yourself you need at least Rust 1.41. If you aren't going 
+to install it using a package manager you should build **muso** with feature 
+`standalone` activated, for example:
+
+```bash
+cargo build --features standalone --release
+```
+
+The standalone feature include contents of [service](share/muso.service) and 
+[config](share/config.toml) in binary, so **muso** can create these files by itself.
+
+## Installing
+To install from source using cargo (installed bin is in `$HOME/.cargo/bin`)
+you can do the following:
+
+```bash
+cargo install --path . --features standalone
+```
+
+Package is also [available on the AUR](https://aur.archlinux.org/packages/muso) 
+for Arch Linux, just install it using your preferred method, for example:
+
+```bash
+yay -S muso
+```
+
 ## Concepts
 
 ### Format string
@@ -139,6 +166,7 @@ file](share/muso.service) for `systemd`, this way you can run **muso**
 automatically on boot. Service file should be run on user level (`systemd
 --user`). The easiest way to copy the service file is running **muso** with
 `--copy-service`, that's all.
+
 
 ## License
 
