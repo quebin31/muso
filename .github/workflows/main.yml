@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - master
+    tags:
+      - "*"
+
+env:
+  GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
 
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads')
+    if: startsWith(github.ref, 'refs/heads/')
     container:
       image: rust:latest
 
@@ -21,7 +26,7 @@ jobs:
 
   build_and_publish:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags')
+    if: startsWith(github.ref, 'refs/tags/')
     container:
       image: rust:latest
 
@@ -34,8 +39,6 @@ jobs:
           name: aur
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Checkout pkgbuild submodule
-        env:
-          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
         run: git submodule update --init --force --depth=1
       - name: Run tests
         run: cargo test
@@ -57,8 +60,6 @@ jobs:
         with:
           target: pkgbuild
       - name: Publish to AUR
-        env:
-          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
         run: |
           cd pkgbuild
 
