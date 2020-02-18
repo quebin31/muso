@@ -20,8 +20,7 @@ jobs:
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Checkout pkgbuild submodule
         env:
-          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur
-          #GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no
+          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no
         run: git submodule update --init --force --depth=1
       - name: Run tests
         run: cargo test
