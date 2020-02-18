@@ -20,10 +20,9 @@ jobs:
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Checkout pkgbuild submodule
         env:
-          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no
+          GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur
+          #GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no
         run: git submodule update --init --force --depth=1
-      - name: Check GITHUB_REF
-        run: echo $GITHUB_REF; false
       - name: Run tests
         run: cargo test
       - name: Build binary
@@ -33,9 +32,10 @@ jobs:
       - name: Update PKGBUILD
         run: |
           sha256sum=$(sha256sum release.tar.gz)
+          version=$(echo $GITHUB_REF | cut -d '/' -f3)
           cd pkgbuild
 
-          sed -i -E "s/(pkgver=).*/\1$GIT_REF" PKGBUILD
+          sed -i -E "s/(pkgver=).*/\1$version" PKGBUILD
           sed -i -E "s/(pkgrel=).*/\11" PKGBUILD
           sed -i -E "s/(sha256sums=).*/\1('$sha256sum')" PKGBUILD
       - name: Commit & push PKGBUILD

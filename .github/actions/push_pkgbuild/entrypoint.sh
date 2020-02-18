@@ -7,10 +7,12 @@ sudo chown -R build /github/workspace
 cd "$target"
 
 namcap PKGBUILD && makepkg --printsrcinfo > .SRCINFO
+version=$(echo $GITHUB_REF | cut -d '/' -f3)
 
-export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no"
+export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur"
+#export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o StrictHostKeyChecking=no"
 git config --local user.email "action@github.com"
 git config --local user.name "GitHub Action"
-git commit -m "Updated from actions" -a
+git commit -m "updver: $version" -a
 git push origin master
 unset GIT_SSH_COMMAND
