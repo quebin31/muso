@@ -46,6 +46,7 @@ fn main() {
         (@arg dryrun: -d --dryrun "Don\'t create neither move anything")
         (@arg recursive: -r --recursive "Search for files recursively")
         (@arg exfatcompat: --("exfat-compat") "Maintain names compatible with FAT32")
+        (@arg copyservice: --("copy-service") "Copy service file to systemd user config dir")
     }
     .get_matches();
 
