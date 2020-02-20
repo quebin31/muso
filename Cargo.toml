@@ -18,6 +18,8 @@ notify = "4"
 log = "0.4.8"
 ansi_term = "0.12.1"
 human-panic = "1"
+lazy_static = "1"
+common_macros = "0.1"
 
 [dependencies.config]
 version = "0.10.1"
