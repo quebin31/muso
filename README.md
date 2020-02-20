@@ -17,7 +17,6 @@
  along with muso.  If not, see <http://www.gnu.org/licenses/>.
 -->
 
-
 <p align="center">
     <br>
     <br>
@@ -67,10 +66,11 @@ you can tell **muso** how to rename your files with a *format string*. This
 string will build the new name (path) using one or more of the following
 placeholders:
 
-- `{artist}`: The artist name (**album artist** from tags is preferred).
-- `{album}`: The album name.
-- `{title}`: Song title.
+- `{artist}`: Artist name (**Album Artist** from tags is preferred, then **Artist**).
+- `{album}`: Album name.
+- `{disc}`: Disc number.
 - `{track}`: Track number.
+- `{title}`: Song title.
 - `{ext}`: File extension (e.g. `mp3`, `flac`)
 
 As an example, the default format that **muso** will use is the following.
@@ -166,7 +166,6 @@ file](share/muso.service) for `systemd`, this way you can run **muso**
 automatically on boot. Service file should be run on user level (`systemd
 --user`). The easiest way to copy the service file is running **muso** with
 `--copy-service`, that's all.
-
 
 ## License
 
