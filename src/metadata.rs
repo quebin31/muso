@@ -16,12 +16,12 @@
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::collections::HashSet;
-use std::error::Error;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
 use common_macros::hash_set;
+use failure::Error;
 use infer;
 use lazy_static::lazy_static;
 
@@ -57,7 +57,7 @@ macro_rules! get_placeholder {
 }
 
 impl Metadata {
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
         let mut file = File::open(&path)?;
         let mut magic_bytes = [0; 4];
         file.read_exact(&mut magic_bytes)?;
@@ -71,7 +71,7 @@ impl Metadata {
         }
     }
 
-    fn from_id3(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+    fn from_id3(path: impl AsRef<Path>) -> Result<Self, Error> {
         let tag = id3::Tag::read_from_path(path)?;
 
         let artist = if let Some(artist) = tag.album_artist() {
@@ -95,7 +95,7 @@ impl Metadata {
         })
     }
 
-    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self, Error> {
         let tag = metaflac::Tag::read_from_path(path)?;
         let comments = &tag
             .vorbis_comments()
@@ -158,7 +158,7 @@ impl Metadata {
                 "{track}" => get_placeholder!(self, track, exfat_compat),
                 "{title}" => get_placeholder!(self, title, exfat_compat),
                 "{ext}" => self.ext.clone(),
-                wtf => unreachable!("Unreacheable with {}", wtf),
+                forgotten => unreachable!("Unreacheable with {}", forgotten),
             };
 
             path = path.replace(*placeholder, &value);
