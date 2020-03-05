@@ -15,32 +15,25 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::error::Error;
-use std::fmt;
+use failure::Fail;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Fail)]
 pub enum MusoError {
+    #[fail(display = "File type not supported!")]
     NotSupported,
+
+    #[fail(display = "Empty vorbis comments!")]
     EmptyComments,
+
+    #[fail(display = "Parent directory is not valid!")]
     BadParent,
+
+    #[fail(display = "Path {} is not valid as root folder!", _0)]
     InvalidRoot(String),
+
+    #[fail(display = "Tag property {} is missing!", _0)]
     MissingTagProperty(String),
+
+    #[fail(display = "Resource {} was not found!", _0)]
     ResourceNotFound(String),
-}
-
-impl Error for MusoError {}
-
-impl fmt::Display for MusoError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            MusoError::EmptyComments => write!(f, "Empty vorbis comments!"),
-            MusoError::NotSupported => write!(f, "File type not supported!"),
-            MusoError::BadParent => write!(f, "Parent directory is invalid!"),
-            MusoError::InvalidRoot(root) => write!(f, "\'{}\' as root folder is invalid!", root),
-            MusoError::MissingTagProperty(prop) => {
-                write!(f, "Property \'{}\' in tags is missing!", prop)
-            }
-            MusoError::ResourceNotFound(res) => write!(f, "Resource \'{}\' wasn\'t found", res),
-        }
-    }
 }
