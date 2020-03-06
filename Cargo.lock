@@ -584,6 +584,7 @@ name = "muso"
 version = "1.2.1"
 dependencies = [
  "ansi_term 0.12.1",
+ "cfg-if",
  "clap",
  "common_macros",
  "config",

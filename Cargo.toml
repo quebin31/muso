@@ -20,6 +20,7 @@ human-panic = "1"
 lazy_static = "1"
 common_macros = "0.1"
 failure = "0.1"
+cfg-if = "0.1"
 
 [dependencies.config]
 version = "0.10.1"
