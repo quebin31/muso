@@ -17,11 +17,14 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env::current_dir;
-use std::fs::{copy, create_dir_all, read_dir, remove_dir, rename, File};
-use std::io::{self, Write};
+use std::fs::{copy, create_dir_all, read_dir, remove_dir, rename};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
+
+#[cfg(feature = "standalone")]
+use std::{fs::File, io::Write};
 
 use cfg_if::cfg_if;
 use clap::ArgMatches;
