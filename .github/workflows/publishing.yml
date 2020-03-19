@@ -1,9 +1,7 @@
-name: Build (and publish)
+name: Publish release
 
 on:
   push:
-    branches:
-      - master
     tags:
       - "*"
 
@@ -11,25 +9,22 @@ env:
   GIT_SSH_COMMAND: ssh -i $HOME/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts
 
 jobs:
-  build_and_test:
+  test:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/')
     container:
       image: rust:latest
 
     steps:
       - uses: actions/checkout@v2
-      - name: Build
-        run: cargo build
       - name: Run tests
-        run: cargo test
+        run: cargo test --release
 
-  build_and_publish:
+  publish:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
     container:
       image: rust:latest
 
+    needs: test
     steps:
       - uses: actions/checkout@v2
       - name: Init SSH key and hosts
@@ -40,8 +35,6 @@ jobs:
           known_hosts: ${{ secrets.KNOWN_HOSTS_AUR }}
       - name: Checkout pkgbuild submodule
         run: git submodule update --init --force --depth=1
-      - name: Run tests
-        run: cargo test
       - name: Build binary
         run: cargo build --release
       - name: Generate tarball
