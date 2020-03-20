@@ -15,17 +15,20 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
+mod args;
+mod config;
 mod error;
 mod logger;
 mod metadata;
 mod muso;
+mod utils;
 
 use std::process;
 
-use clap::clap_app;
+use clap::{clap_app, App as ClapApp};
 use human_panic::setup_panic;
-use log::error;
 
+use crate::error::Result;
 use crate::logger::init_logger;
 use crate::muso::Muso;
 
@@ -33,11 +36,22 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
+fn run(app: ClapApp) -> Result<()> {
+    let matches = app.get_matches();
+
+    if matches.is_present("copyservice") {
+        return utils::generate_resource(utils::Resource::Service);
+    }
+
+    let muso = Muso::from_matches(matches)?;
+    muso.run()
+}
+
 fn main() {
     setup_panic!();
     init_logger().unwrap();
 
-    let matches = clap_app! { muso =>
+    let app = clap_app! { muso =>
         (version: VERSION)
         (author: AUTHORS)
         (about: ABOUT)
@@ -51,14 +65,13 @@ fn main() {
         (@arg copyservice: --("copy-service") conflicts_with[format config
             watch dryrun recursive exfatcompat path]
             "Copy service file to systemd user config dir, nothing else")
-    }
-    .get_matches();
+    };
 
-    process::exit(match Muso::run(&matches) {
-        Ok(_) => 0,
+    process::exit(match run(app) {
         Err(e) => {
-            error!("{}", e);
+            log::error!("{}", e);
             1
         }
+        Ok(_) => 0,
     })
 }
