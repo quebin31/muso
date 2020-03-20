@@ -15,25 +15,31 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
-use failure::Fail;
+use thiserror::Error;
 
-#[derive(Debug, PartialEq, Fail)]
+#[derive(Debug, PartialEq, Error)]
 pub enum MusoError {
-    #[fail(display = "File type not supported!")]
+    #[error("File type not supported!")]
     NotSupported,
 
-    #[fail(display = "Empty vorbis comments!")]
+    #[error("Empty vorbis comments!")]
     EmptyComments,
 
-    #[fail(display = "Parent directory is not valid!")]
-    BadParent,
+    #[error("Parent directory of \"{child}\" is not valid!")]
+    InvalidParent { child: String },
 
-    #[fail(display = "Path {} is not valid as root folder!", _0)]
-    InvalidRoot(String),
+    #[error("Path {path} is not valid as root folder!")]
+    InvalidRoot { path: String },
 
-    #[fail(display = "Tag property {} is missing!", _0)]
-    MissingTagProperty(String),
+    #[error("Tag property {tag} is missing!")]
+    MissingTag { tag: String },
 
-    #[fail(display = "Resource {} was not found!", _0)]
-    ResourceNotFound(String),
+    #[cfg(not(feature = "standalone"))]
+    #[error("Resource \"{path}\" was not found!")]
+    ResourceNotFound { path: String },
+
+    #[error("Invalid config file: \"{path}\" ({reason})")]
+    InvalidConfig { path: String, reason: String },
 }
+
+pub type Result<T> = std::result::Result<T, anyhow::Error>;

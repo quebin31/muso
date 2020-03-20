@@ -34,8 +34,8 @@ impl Log for MusoLogger {
     fn log(&self, record: &Record) {
         match record.level() {
             Level::Info => println!("{} {}", Cyan.bold().paint("[i]"), record.args()),
-            Level::Warn => println!("{} {}", Yellow.bold().paint("[w]"), record.args()),
-            Level::Error => println!("{} {}", Red.bold().paint("[e]"), record.args()),
+            Level::Warn => eprintln!("{} {}", Yellow.bold().paint("[w]"), record.args()),
+            Level::Error => eprintln!("{} {}", Red.bold().paint("[e]"), record.args()),
             _ => {}
         }
     }
