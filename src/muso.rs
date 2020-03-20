@@ -16,222 +16,96 @@
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::collections::{HashMap, HashSet};
-use std::env::current_dir;
-use std::fs::{copy, create_dir_all, read_dir, remove_dir, rename};
-use std::io;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
 
-#[cfg(feature = "standalone")]
-use std::{fs::File, io::Write};
-
-use cfg_if::cfg_if;
 use clap::ArgMatches;
-use config::{self, Config};
-use dirs;
-use failure::Error;
-use log::{error, info, warn};
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
-use shellexpand;
 
-use crate::error::MusoError;
+use crate::args::Args;
+use crate::config::Config;
+use crate::error::{MusoError, Result};
 use crate::metadata;
+use crate::utils;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Muso {
+    args: Args,
     config: Config,
-    path: PathBuf,
-    format: String,
-    watch: bool,
-    dryrun: bool,
-    recursive: bool,
-    exfat_compat: bool,
     ignore_paths: HashSet<PathBuf>,
 }
 
 impl Muso {
-    pub fn run(matches: &ArgMatches) -> Result<(), Error> {
-        // Detect copyservice flag early on, this flag will only
-        // copy the service, and nothing else.
-        if matches.is_present("copyservice") {
-            let shared_service = Path::new("/usr/share/muso/muso.service");
+    pub fn from_matches(matches: ArgMatches) -> Result<Self> {
+        let config_path = matches
+            .value_of("config")
+            .map_or(utils::default_config_path().to_string_lossy().into(), |v| {
+                v.to_string()
+            });
 
-            let user_service = dirs::config_dir()
-                .unwrap()
-                .join("systemd/user/muso.service");
+        let config = Config::from_path(config_path)?;
+        let args = Args::from_matches(matches, &config)?;
 
-            // Check the existence of service on /usr/share/muso/muso.service
-            // If building with standalone feature include contents of
-            // muso.service in the binary, otherwise just fail.
-            if !shared_service.exists() {
-                cfg_if! {
-                    if #[cfg(feature = "standalone")] {
-                        info!("Writing service file");
-                        let mut file = File::create(&user_service)?;
-                        write!(file, "{}", include_str!("../share/muso.service"))?;
-                        info!("Successfully writed to: \"{}\"", user_service.to_string_lossy());
-                    } else {
-                        return Err(MusoError::ResourceNotFound(
-                            shared_service.to_string_lossy().to_string(),
-                        )
-                        .into());
-                    }
-                }
-            } else {
-                info!("Copying service file from shared assets");
-                copy(shared_service, &user_service)?;
-                info! {
-                    "Successfully copied to: \"{}\"",
-                    user_service.to_string_lossy()
-                };
-            }
-
-            return Ok(());
-        }
-
-        let config_path = matches.value_of("config").map_or(
-            format! {
-                "{}/muso/config.toml",
-                dirs::config_dir().unwrap().to_string_lossy()
-            },
-            |v| v.to_owned(),
-        );
-
-        let config_path = Path::new(&config_path);
-        if !config_path.exists() {
-            let shared_config = Path::new("/usr/share/muso/config.toml");
-            let config_dir = dirs::config_dir().unwrap().join("muso");
-            if !shared_config.exists() {
-                cfg_if! {
-                    if #[cfg(feature = "standalone")] {
-                        info!("Writing default config: \"{}\"", config_path.to_string_lossy());
-
-                        maybe_create_dir(config_dir)?;
-                        let mut file = File::create(&config_path)?;
-                        write!(file, "{}", include_str!("../share/config.toml"))?;
-                    } else {
-                        return Err(MusoError::ResourceNotFound(
-                            shared_config.to_string_lossy().to_string(),
-                        )
-                        .into());
-                    }
-                }
-            } else if config_path.starts_with(&config_dir) {
-                info!("Copying config from shared assets");
-                maybe_create_dir(config_dir)?;
-                copy(shared_config, config_path)?;
-            } else {
-                return Err(
-                    MusoError::ResourceNotFound(config_path.to_string_lossy().to_string()).into(),
-                );
-            }
-        }
-
-        let mut config = Config::default();
-        config.merge(config::File::new(
-            &config_path.to_string_lossy(),
-            config::FileFormat::Toml,
-        ))?;
-        sanitize_paths(&mut config)?;
-
-        let path = matches
-            .value_of("path")
-            .map_or(current_dir()?, |p| p.into())
-            .canonicalize()?
-            .to_string_lossy()
-            .to_string();
-
-        let format = matches
-            .value_of("format")
-            .map_or(search_format_for(&config, &path), |f| Some(f.to_owned()))
-            .unwrap_or_else(|| "{artist}/{album}/{track} - {title}.{ext}".to_owned());
-
-        let watch = matches.is_present("watch");
-        let dryrun = matches.is_present("dryrun");
-        let recursive = matches.is_present("recursive");
-        let exfat_compat = matches.is_present("exfatcompat");
-
-        let mut muso = Self {
+        Ok(Self {
+            args,
             config,
-            path: path.into(),
-            format,
-            watch,
-            dryrun,
-            recursive: recursive || watch,
-            exfat_compat,
             ignore_paths: Default::default(),
-        };
-
-        muso.run_inner()
+        })
     }
 
-    fn run_inner(&mut self) -> Result<(), Error> {
-        if self.watch {
-            let libraries = self.config.get_array("watch.libraries").unwrap_or_default();
-
-            if libraries.is_empty() {
-                error!("No directories to watch!");
+    pub fn run(mut self) -> Result<()> {
+        if self.args.watch_mode {
+            if self.config.libraries.is_empty() {
+                log::info!("No directories to watch!");
                 return Ok(());
             }
 
             let (tx, rx) = mpsc::channel();
             let mut watcher = notify::watcher(
                 tx,
-                Duration::from_secs(self.config.get_int("watch.every").map_or(1u64, |t| {
-                    if t < 0 {
-                        1
-                    } else {
-                        t as u64
-                    }
-                })),
+                Duration::from_secs(self.config.watch.every.unwrap_or(1u64)),
             )?;
 
-            let mut related_library = HashMap::new();
-            for library in libraries {
-                let library = library.into_str()?;
-                let folders = self
-                    .config
-                    .get_array(&format!("libraries.{}.folders", library))?;
-
-                for folder in folders {
-                    let folder = folder.into_str()?;
-                    related_library.insert(folder.clone(), library.clone());
-                    watcher.watch(&folder, RecursiveMode::Recursive)?;
+            let mut library_for = HashMap::new();
+            for (name, library) in &self.config.libraries {
+                for folder in &library.folders {
+                    library_for.insert(folder.clone(), name.clone());
+                    watcher.watch(folder, RecursiveMode::Recursive)?;
                 }
             }
 
-            info!("Watching libraries...");
-            self.watch_loop(rx, related_library)
-        } else if self.path.is_dir() {
-            let path = self.path.clone();
-            self.sort_folder(&path, &path)
+            log::info!("Watching libraries");
+            self.watch_loop(rx, library_for)
+        } else if self.args.working_path.is_dir() {
+            let working_path = self.args.working_path.clone();
+            self.sort_folder(&working_path, &working_path)
                 .map(|(success, total)| {
-                    info!(
+                    log::info! {
                         "Done: {} successful out of {} ({} failed)",
                         success,
                         total,
                         total - success
-                    );
-                })
-                .map_err(|e| {
-                    error!("{}", e);
-                    e
+                    };
                 })
         } else {
-            Err(MusoError::InvalidRoot(self.path.to_string_lossy().to_string()).into())
+            Err(MusoError::InvalidRoot {
+                path: self.args.working_path.to_string_lossy().into(),
+            }
+            .into())
         }
     }
 
     fn watch_loop(
         &mut self,
         rx: mpsc::Receiver<DebouncedEvent>,
-        related_library: HashMap<String, String>,
-    ) -> Result<(), Error> {
+        library_for: HashMap<String, String>,
+    ) -> Result<()> {
         loop {
             let event = rx.recv();
             if let Err(e) = event {
-                error!("{}", e);
+                log::error!("{}", e);
                 continue;
             }
 
@@ -246,23 +120,23 @@ impl Muso {
                         continue;
                     }
 
-                    if let Some(ancestor) = self.get_ancestor_for(&path, &related_library) {
-                        self.set_options_from(&ancestor, &related_library);
+                    if let Some(ancestor) = self.get_ancestor_for(&path, &library_for) {
+                        self.set_options_from(&ancestor, &library_for);
 
                         if path.is_dir() {
                             match self.sort_folder(&ancestor, &path) {
-                                Ok((success, total)) => info!(
+                                Ok((success, total)) => log::info! {
                                     "Done: {} successful out of {} ({} failed)",
                                     success,
                                     total,
                                     total - success
-                                ),
-                                Err(e) => error!("{}", e),
+                                },
+                                Err(e) => log::error!("{}", e),
                             }
                         } else {
                             match self.sort_file(&ancestor, &path) {
-                                Ok(()) => info!("Done: 1 successful out of 1 (0 failed)"),
-                                Err(e) => error!("{}", e),
+                                Ok(()) => log::info!("Done: 1 successful out of 1 (0 failed)"),
+                                Err(e) => log::error!("{}", e),
                             }
                         }
                     }
@@ -273,16 +147,16 @@ impl Muso {
         }
     }
 
-    fn sort_folder(&mut self, root: &Path, folder: &Path) -> Result<(usize, usize), Error> {
-        let results = read_dir(folder)?.map(|entry| -> (usize, usize) {
+    fn sort_folder(&mut self, root: &Path, folder: &Path) -> Result<(usize, usize)> {
+        let results = fs::read_dir(folder)?.map(|entry| -> (usize, usize) {
             let entry = entry.expect("Cannot get entry!");
             let file_type = entry.file_type().expect("Cannot get file type!");
 
-            if file_type.is_dir() && self.recursive {
+            if file_type.is_dir() && self.args.recursive {
                 match self.sort_folder(root, &entry.path()) {
                     Ok(result) => result,
                     Err(e) => {
-                        error!("{}", e);
+                        log::error!("{}", e);
                         (0, 0)
                     }
                 }
@@ -290,7 +164,7 @@ impl Muso {
                 match self.sort_file(root.as_ref(), &entry.path()) {
                     Ok(_) => (1, 1),
                     Err(e) => {
-                        error!("{}", e);
+                        log::error!("{}", e);
                         (0, 1)
                     }
                 }
@@ -303,36 +177,38 @@ impl Muso {
             (success_t + success, total + total_t)
         });
 
-        if dir_is_empty(folder)? {
-            info!("Removing empty folder: \"{}\"", folder.to_string_lossy());
-            remove_dir(folder)?;
+        if utils::is_empty_dir(folder)? {
+            log::info!("Removing empty folder: \"{}\"", folder.to_string_lossy());
+            fs::remove_dir(folder)?;
         }
 
         Ok((success, total))
     }
 
-    fn sort_file(&mut self, root: &Path, file: &Path) -> Result<(), Error> {
-        if self.dryrun {
-            info!("Dry run on: \"{}\"", file.to_string_lossy());
+    fn sort_file(&mut self, root: &Path, file: &Path) -> Result<()> {
+        if self.args.dryrun {
+            log::info!("Dry run on: \"{}\"", file.to_string_lossy());
         } else {
-            info!("Working on: \"{}\"", file.to_string_lossy());
+            log::info!("Working on: \"{}\"", file.to_string_lossy());
         }
 
         let metadata = metadata::Metadata::from_path(file)?;
-        let new_path = metadata.build_path(&self.format, self.exfat_compat)?;
+        let new_path = metadata.build_path(&self.args.format, self.args.exfat_compat)?;
 
-        if self.dryrun {
-            info!("Item created: \"{}\"", new_path);
+        if self.args.dryrun {
+            log::info!("Item created: \"{}\"", new_path);
         } else {
             let new_path = root.join(&new_path);
-            let new_path_parent = new_path.parent().ok_or(MusoError::BadParent)?;
+            let new_path_parent = new_path.parent().ok_or(MusoError::InvalidParent {
+                child: new_path.to_string_lossy().into(),
+            })?;
 
-            maybe_create_dir(new_path_parent)?;
-            rename(file, &new_path)?;
+            utils::maybe_create_dir(new_path_parent)?;
+            fs::rename(file, &new_path)?;
 
-            info!("Item created: \"{}\"", new_path.to_string_lossy());
+            log::info!("Item created: \"{}\"", new_path.to_string_lossy());
 
-            if self.watch {
+            if self.args.watch_mode {
                 if new_path_parent != root {
                     self.ignore_paths.insert(new_path_parent.to_path_buf());
                 }
@@ -347,11 +223,11 @@ impl Muso {
     fn get_ancestor_for(
         &self,
         path: impl AsRef<Path>,
-        related_library: &HashMap<String, String>,
+        library_for: &HashMap<String, String>,
     ) -> Option<PathBuf> {
         for ancestor in path.as_ref().ancestors() {
             let ancestor = ancestor.to_string_lossy();
-            if !related_library.contains_key(ancestor.as_ref()) {
+            if !library_for.contains_key(ancestor.as_ref()) {
                 continue;
             } else {
                 return Some(ancestor.as_ref().into());
@@ -364,28 +240,16 @@ impl Muso {
     fn set_options_from(
         &mut self,
         ancestor: impl AsRef<Path>,
-        related_library: &HashMap<String, String>,
+        library_for: &HashMap<String, String>,
     ) {
         let ancestor = ancestor.as_ref().to_string_lossy();
-        let library = &related_library[ancestor.as_ref()];
+        let library = &library_for[ancestor.as_ref()];
 
-        let format = self
-            .config
-            .get_str(&format!("libraries.{}.format", library))
-            .ok();
+        let format = self.config.libraries[library].format.clone();
+        let exfat_compat = self.config.libraries[library].exfat_compat;
 
-        if let Some(format) = format {
-            self.format = format;
-        }
-
-        let exfat_compat = self
-            .config
-            .get_bool(&format!("libraries.{}.exfat-compat", library))
-            .ok();
-
-        if let Some(exfat_compat) = exfat_compat {
-            self.exfat_compat = exfat_compat;
-        }
+        self.args.format = format;
+        self.args.exfat_compat = exfat_compat.unwrap_or(self.args.exfat_compat);
     }
 
     fn is_ignored(&self, path: impl AsRef<Path>) -> bool {
@@ -405,71 +269,4 @@ impl Muso {
             false
         }
     }
-}
-
-fn maybe_create_dir(path: impl AsRef<Path>) -> io::Result<()> {
-    if let Err(e) = create_dir_all(path) {
-        match e.kind() {
-            io::ErrorKind::AlreadyExists => Ok(()),
-            _ => Err(e),
-        }
-    } else {
-        Ok(())
-    }
-}
-
-fn dir_is_empty(path: impl AsRef<Path>) -> Result<bool, Error> {
-    if !path.as_ref().is_dir() {
-        Ok(false)
-    } else {
-        Ok(read_dir(path)?.count() == 0)
-    }
-}
-
-fn sanitize_paths(config: &mut Config) -> Result<(), Error> {
-    let libraries = config.get_table("libraries")?;
-
-    for (library, table) in libraries {
-        let table = table.into_table()?;
-        let folders = table.get("folders").unwrap().clone().into_array()?;
-
-        let mut sanitized: Vec<config::Value> = Vec::new();
-        for folder in folders {
-            let folder = folder.clone().into_str()?;
-
-            match shellexpand::full(&folder) {
-                Ok(full) => {
-                    let path = Path::new(full.as_ref());
-                    if path.is_absolute() && path.exists() {
-                        sanitized.push(full.as_ref().into());
-                    }
-                }
-                Err(e) => warn!("{}", e),
-            }
-        }
-
-        config.set(&format!("libraries.{}.folders", library), sanitized)?;
-    }
-
-    Ok(())
-}
-
-fn search_format_for(config: &Config, path: impl AsRef<Path>) -> Option<String> {
-    let libraries = config.get_table("libraries").ok()?;
-
-    for (_, table) in libraries {
-        let table = table.into_table().ok()?;
-        let folders = table.get("folders")?.clone().into_array().ok()?;
-
-        for folder in folders {
-            let folder = folder.into_str().ok()?;
-
-            if Path::new(&folder) == path.as_ref() {
-                let format = table.get("format")?.clone().into_str().ok()?;
-                return Some(format);
-            }
-        }
-    }
-
-    None
 }
