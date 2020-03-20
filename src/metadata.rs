@@ -21,11 +21,9 @@ use std::io::Read;
 use std::path::Path;
 
 use common_macros::hash_set;
-use failure::Error;
-use infer;
 use lazy_static::lazy_static;
 
-use crate::error::MusoError;
+use crate::error::{MusoError, Result};
 
 #[derive(Debug)]
 pub struct Metadata {
@@ -49,7 +47,9 @@ macro_rules! get_placeholder {
             &$self
                 .$placeholder
                 .as_ref()
-                .ok_or_else(|| MusoError::MissingTagProperty(stringify!($placeholder).to_owned()))?
+                .ok_or_else(|| MusoError::MissingTag {
+                    tag: stringify!($placeholder).into(),
+                })?
                 .to_string(),
             $exfat_compat,
         )
@@ -57,7 +57,7 @@ macro_rules! get_placeholder {
 }
 
 impl Metadata {
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
         let mut file = File::open(&path)?;
         let mut magic_bytes = [0; 4];
         file.read_exact(&mut magic_bytes)?;
@@ -71,7 +71,7 @@ impl Metadata {
         }
     }
 
-    fn from_id3(path: impl AsRef<Path>) -> Result<Self, Error> {
+    fn from_id3(path: impl AsRef<Path>) -> Result<Self> {
         let tag = id3::Tag::read_from_path(path)?;
 
         let artist = if let Some(artist) = tag.album_artist() {
@@ -95,7 +95,7 @@ impl Metadata {
         })
     }
 
-    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self, Error> {
+    fn from_vorbis(path: impl AsRef<Path>) -> Result<Self> {
         let tag = metaflac::Tag::read_from_path(path)?;
         let comments = &tag
             .vorbis_comments()
@@ -143,7 +143,11 @@ impl Metadata {
         })
     }
 
-    pub fn build_path(&self, format: &str, exfat_compat: bool) -> Result<String, MusoError> {
+    pub fn build_path(
+        &self,
+        format: &str,
+        exfat_compat: bool,
+    ) -> std::result::Result<String, MusoError> {
         let mut path = format.to_owned();
 
         for placeholder in &*PLACEHOLDERS {
@@ -214,7 +218,7 @@ mod tests {
         let metadata = Metadata::from_path("test_files/partial.flac").unwrap();
 
         assert_eq! {
-            Err(MusoError::MissingTagProperty("album".to_owned())),
+            Err(MusoError::MissingTag{ tag: "album".into() }),
             metadata.build_path("{artist}/{album}", false)
         };
     }
@@ -244,7 +248,7 @@ mod tests {
         let metadata = Metadata::from_path("test_files/partial.mp3").unwrap();
 
         assert_eq! {
-            Err(MusoError::MissingTagProperty("album".to_owned())),
+            Err(MusoError::MissingTag{ tag: "album".into() }),
             metadata.build_path("{artist}/{album}", false)
         };
     }
