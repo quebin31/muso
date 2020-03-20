@@ -15,9 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
-use nom::character::complete::digit1;
+use nom::character::complete::{anychar, digit1};
 use nom::IResult;
 use nom::{alt, char, complete, delimited, many0, separated_pair, tag, take_while};
+
+use crate::error::MusoError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Placeholder {
@@ -45,6 +47,7 @@ impl From<&str> for Placeholder {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Component {
+    Char(char),
     String(String),
     Placeholder(Placeholder),
 }
@@ -92,12 +95,41 @@ fn component(input: &str) -> IResult<&str, Component> {
     alt! {
         input,
         complete!(placeholder) => { |p| Component::Placeholder(p) } |
-        take_while!(|c| c != '{') => { |s: &str| Component::String(s.into()) }
+        anychar => { |c| Component::Char(c) }
     }
 }
 
-pub fn parse_format_string(input: &str) -> IResult<&str, ParsedFormat> {
-    many0!(input, component)
+fn parse_inner(input: &str) -> IResult<&str, ParsedFormat> {
+    let (input, components) = many0!(input, component)?;
+
+    let mut parsed = ParsedFormat::new();
+    let mut free = String::with_capacity(10);
+    for component in components {
+        match component {
+            Component::Char(c) => free.push(c),
+            Component::Placeholder(p) => {
+                if !free.is_empty() {
+                    parsed.push(Component::String(free.clone()));
+                    free.clear();
+                }
+
+                parsed.push(Component::Placeholder(p.clone()));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    Ok((input, parsed))
+}
+
+pub fn parse_format_string(input: &str) -> Result<ParsedFormat, MusoError> {
+    let (rest, parsed) = parse_inner(input).map_err(|_| MusoError::FailedToParse)?;
+
+    if !rest.is_empty() {
+        Err(MusoError::FailedToParse)
+    } else {
+        Ok(parsed)
+    }
 }
 
 #[cfg(test)]
@@ -119,7 +151,7 @@ mod tests {
 
     #[test]
     fn component_parse() {
-        assert_eq!(component("foo"), Ok(("", Component::String("foo".into()))));
+        assert_eq!(component("foo"), Ok(("oo", Component::Char('f'))));
     }
 
     #[test]
@@ -136,7 +168,7 @@ mod tests {
             Component::Placeholder(Placeholder::Ext),
         ];
 
-        let parsed = parse_format_string("{artist}/{album}/{track} - {title}.{ext}");
+        let parsed = parse_inner("{artist}/{album}/{track} - {title}.{ext}");
 
         assert_eq!(parsed, Ok(("", expected)));
     }
@@ -149,8 +181,16 @@ mod tests {
             Component::Placeholder(Placeholder::Track { leading: 2 }),
         ];
 
-        let parsed = parse_format_string("{disc:2} - {track:2}");
+        let parsed = parse_inner("{disc:2} - {track:2}");
 
+        assert_eq!(parsed, Ok(("", expected)));
+    }
+
+    #[test]
+    fn without_placeholders() {
+        let expected = vec![Component::String("hello world".into())];
+
+        let parsed = parse_inner("hello world");
         assert_eq!(parsed, Ok(("", expected)));
     }
 }
