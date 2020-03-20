@@ -18,6 +18,7 @@
 mod args;
 mod config;
 mod error;
+mod format;
 mod logger;
 mod metadata;
 mod muso;

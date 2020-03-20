@@ -40,6 +40,9 @@ pub enum MusoError {
 
     #[error("Invalid config file: \"{path}\" ({reason})")]
     InvalidConfig { path: String, reason: String },
+
+    #[error("Failed to parse format string")]
+    FailedToParse,
 }
 
 pub type Result<T> = std::result::Result<T, anyhow::Error>;

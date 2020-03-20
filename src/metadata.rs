@@ -15,15 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use common_macros::hash_set;
-use lazy_static::lazy_static;
-
 use crate::error::{MusoError, Result};
+use crate::format::{Component, Placeholder};
 
 #[derive(Debug)]
 pub struct Metadata {
@@ -33,12 +30,6 @@ pub struct Metadata {
     pub track: Option<u32>,
     pub title: Option<String>,
     pub ext: String,
-}
-
-lazy_static! {
-    static ref PLACEHOLDERS: HashSet<&'static str> = hash_set! {
-        "{artist}", "{album}", "{disc}", "{track}", "{title}", "{ext}"
-    };
 }
 
 macro_rules! get_placeholder {
@@ -145,27 +136,34 @@ impl Metadata {
 
     pub fn build_path(
         &self,
-        format: &str,
+        parsed_format: &[Component],
         exfat_compat: bool,
     ) -> std::result::Result<String, MusoError> {
-        let mut path = format.to_owned();
+        let mut path = String::with_capacity(64);
 
-        for placeholder in &*PLACEHOLDERS {
-            if !path.contains(placeholder) {
-                continue;
+        for component in parsed_format {
+            match component {
+                Component::String(s) => path.push_str(&s),
+                Component::Placeholder(p) => {
+                    let value = match p {
+                        Placeholder::Artist => get_placeholder!(self, artist, exfat_compat),
+                        Placeholder::Album => get_placeholder!(self, album, exfat_compat),
+                        Placeholder::Disc { leading } => {
+                            let value = get_placeholder!(self, disc, exfat_compat);
+                            add_zeros(value, *leading)
+                        }
+                        Placeholder::Track { leading } => {
+                            let value = get_placeholder!(self, track, exfat_compat);
+                            add_zeros(value, *leading)
+                        }
+                        Placeholder::Title => get_placeholder!(self, title, exfat_compat),
+                        Placeholder::Ext => self.ext.clone(),
+                    };
+
+                    path.push_str(&value);
+                }
+                _ => unreachable!(),
             }
-
-            let value = match *placeholder {
-                "{artist}" => get_placeholder!(self, artist, exfat_compat),
-                "{album}" => get_placeholder!(self, album, exfat_compat),
-                "{disc}" => get_placeholder!(self, disc, exfat_compat),
-                "{track}" => get_placeholder!(self, track, exfat_compat),
-                "{title}" => get_placeholder!(self, title, exfat_compat),
-                "{ext}" => self.ext.clone(),
-                forgotten => unreachable!("Unreacheable with {}", forgotten),
-            };
-
-            path = path.replace(*placeholder, &value);
         }
 
         Ok(path)
@@ -189,67 +187,86 @@ fn replace(string: &str, exfat_compat: bool) -> String {
     }
 }
 
+fn add_zeros(string: String, leading: u8) -> String {
+    if leading != 0 {
+        let mut res: String = vec!['0'; leading as usize - string.len()].iter().collect();
+        res.push_str(&string);
+        res
+    } else {
+        string
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::format::parse_format_string;
 
     #[test]
     fn complete_flac_with_ok_format() {
         let metadata = Metadata::from_path("test_files/complete.flac").unwrap();
+        let format =
+            parse_format_string("{artist}/{album}/{disc}.{track} - {title}.{ext}").unwrap();
 
         assert_eq! {
             Ok("Album Artist/Album/1.1 - Title.flac".into()),
-            metadata.build_path("{artist}/{album}/{disc}.{track} - {title}.{ext}", false)
+            metadata.build_path(&format, false)
         };
     }
 
     #[test]
     fn partial_flac_with_ok_format() {
         let metadata = Metadata::from_path("test_files/partial.flac").unwrap();
+        let format = parse_format_string("{artist}/{disc}.{track} - {title}.{ext}").unwrap();
 
         assert_eq! {
             Ok("Artist/1.1 - Title.flac".into()),
-            metadata.build_path("{artist}/{disc}.{track} - {title}.{ext}", false)
+            metadata.build_path(&format, false)
         };
     }
 
     #[test]
     fn partial_flac_with_bad_format() {
         let metadata = Metadata::from_path("test_files/partial.flac").unwrap();
+        let format = parse_format_string("{artist}/{album}").unwrap();
 
         assert_eq! {
             Err(MusoError::MissingTag{ tag: "album".into() }),
-            metadata.build_path("{artist}/{album}", false)
+            metadata.build_path(&format, false)
         };
     }
 
     #[test]
     fn complete_mp3_with_ok_format() {
         let metadata = Metadata::from_path("test_files/complete.mp3").unwrap();
+        let format =
+            parse_format_string("{artist}/{album}/{disc}.{track} - {title}.{ext}").unwrap();
 
         assert_eq! {
             Ok("Album Artist/Album/1.1 - Title.mp3".into()),
-            metadata.build_path("{artist}/{album}/{disc}.{track} - {title}.{ext}", false)
+            metadata.build_path(&format, false)
         };
     }
 
     #[test]
     fn partial_mp3_with_ok_format() {
         let metadata = Metadata::from_path("test_files/partial.mp3").unwrap();
+        let format = parse_format_string("{artist}/{disc}.{track} - {title}.{ext}").unwrap();
 
         assert_eq! {
             Ok("Artist/1.1 - Title.mp3".into()),
-            metadata.build_path("{artist}/{disc}.{track} - {title}.{ext}", false)
+            metadata.build_path(&format, false)
         };
     }
 
     #[test]
     fn partial_mp3_with_bad_format() {
         let metadata = Metadata::from_path("test_files/partial.mp3").unwrap();
+        let format = parse_format_string("{artist}/{album}").unwrap();
 
         assert_eq! {
             Err(MusoError::MissingTag{ tag: "album".into() }),
-            metadata.build_path("{artist}/{album}", false)
+            metadata.build_path(&format, false)
         };
     }
 }
