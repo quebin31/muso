@@ -188,7 +188,7 @@ fn replace(string: &str, exfat_compat: bool) -> String {
 }
 
 fn add_zeros(string: String, leading: u8) -> String {
-    if leading != 0 {
+    if (leading as usize) > string.len() {
         let mut res: String = vec!['0'; leading as usize - string.len()].iter().collect();
         res.push_str(&string);
         res
