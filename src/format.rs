@@ -119,6 +119,10 @@ fn parse_inner(input: &str) -> IResult<&str, ParsedFormat> {
         }
     }
 
+    if !free.is_empty() {
+        parsed.push(Component::String(free));
+    }
+
     Ok((input, parsed))
 }
 
