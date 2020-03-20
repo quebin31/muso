@@ -217,8 +217,7 @@ mod tests {
     #[test]
     fn partial_flac_with_ok_format() {
         let metadata = Metadata::from_path("test_files/partial.flac").unwrap();
-        let format =
-            parse_format_string("{artist}/{album}/{disc}.{track} - {title}.{ext}").unwrap();
+        let format = parse_format_string("{artist}/{disc}.{track} - {title}.{ext}").unwrap();
 
         assert_eq! {
             Ok("Artist/1.1 - Title.flac".into()),
