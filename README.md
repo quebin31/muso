@@ -21,6 +21,9 @@
     <br>
     <br>
     <image src="logo/muso.png" alt="muso"></image>
+    <br>
+    <br>
+    <image src="https://github.com/quebin31/muso/workflows/CI%20(master)/badge.svg" alt="Continuous integration"></image>
 </p>
 
 ## About
