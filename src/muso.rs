@@ -27,6 +27,7 @@ use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use crate::args::Args;
 use crate::config::Config;
 use crate::error::{MusoError, Result};
+use crate::format::{parse_format_string, ParsedFormat};
 use crate::metadata;
 use crate::utils;
 
@@ -34,6 +35,7 @@ use crate::utils;
 pub struct Muso {
     args: Args,
     config: Config,
+    parsed_format: ParsedFormat,
     ignore_paths: HashSet<PathBuf>,
 }
 
@@ -47,10 +49,12 @@ impl Muso {
 
         let config = Config::from_path(config_path)?;
         let args = Args::from_matches(matches, &config)?;
+        let parsed_format = parse_format_string(&args.format)?;
 
         Ok(Self {
             args,
             config,
+            parsed_format,
             ignore_paths: Default::default(),
         })
     }
@@ -121,7 +125,10 @@ impl Muso {
                     }
 
                     if let Some(ancestor) = self.get_ancestor_for(&path, &library_for) {
-                        self.set_options_from(&ancestor, &library_for);
+                        if let Err(e) = self.set_options_from(&ancestor, &library_for) {
+                            log::error!("{}", e);
+                            continue;
+                        }
 
                         if path.is_dir() {
                             match self.sort_folder(&ancestor, &path) {
@@ -193,7 +200,7 @@ impl Muso {
         }
 
         let metadata = metadata::Metadata::from_path(file)?;
-        let new_path = metadata.build_path(&self.args.format, self.args.exfat_compat)?;
+        let new_path = metadata.build_path(&self.parsed_format, self.args.exfat_compat)?;
 
         if self.args.dryrun {
             log::info!("Item created: \"{}\"", new_path);
@@ -241,7 +248,7 @@ impl Muso {
         &mut self,
         ancestor: impl AsRef<Path>,
         library_for: &HashMap<String, String>,
-    ) {
+    ) -> Result<()> {
         let ancestor = ancestor.as_ref().to_string_lossy();
         let library = &library_for[ancestor.as_ref()];
 
@@ -250,6 +257,8 @@ impl Muso {
 
         self.args.format = format;
         self.args.exfat_compat = exfat_compat.unwrap_or(self.args.exfat_compat);
+        self.parsed_format = parse_format_string(&self.args.format)?;
+        Ok(())
     }
 
     fn is_ignored(&self, path: impl AsRef<Path>) -> bool {
