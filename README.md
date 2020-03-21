@@ -82,6 +82,13 @@ As an example, the default format that **muso** will use is the following.
 "{artist}/{album}/{track} - {title}.{ext}"
 ```
 
+Additionally, `{disc}` and `{track}` placeholders have the option to fill
+with leading zeros, the syntax is `{disc:n}` or `{track:n}` where `n` is the
+length that has to be achieved adding leading zeros. For example, using `{disc:2}` will produce the following transformations:
+
+- `2` will become `02`
+- `10` will become `10`
+
 A format string can be specified for *oneshot* mode using the `-f/--format`
 option, or providing it in for each [library](#libraries) in the [config
 file](share/config.toml).
