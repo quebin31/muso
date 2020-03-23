@@ -21,7 +21,7 @@ use std::{fs::File, io::Write};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::error::{MusoError, Result};
+use crate::error::{AnyResult, MusoError};
 
 #[inline]
 pub fn default_config_path() -> PathBuf {
@@ -45,7 +45,7 @@ pub fn maybe_create_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
     }
 }
 
-pub fn is_empty_dir(path: impl AsRef<Path>) -> Result<bool> {
+pub fn is_empty_dir(path: impl AsRef<Path>) -> AnyResult<bool> {
     if !path.as_ref().is_dir() {
         Ok(false)
     } else {
@@ -58,7 +58,7 @@ pub enum Resource {
     Service,
 }
 
-pub fn generate_resource(res: Resource) -> Result<()> {
+pub fn generate_resource(res: Resource) -> AnyResult<()> {
     let name = match res {
         Resource::Config => "config",
         Resource::Service => "service",

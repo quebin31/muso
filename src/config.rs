@@ -21,7 +21,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use crate::error::{MusoError, Result};
+use crate::error::{AnyResult, MusoError};
 use crate::utils;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -45,7 +45,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
+    pub fn from_path(path: impl AsRef<Path>) -> AnyResult<Self> {
         let default = utils::default_config_path();
         let path = path.as_ref();
 

@@ -45,4 +45,5 @@ pub enum MusoError {
     FailedToParse,
 }
 
-pub type Result<T> = std::result::Result<T, anyhow::Error>;
+pub type AnyResult<T> = std::result::Result<T, anyhow::Error>;
+pub type MusoResult<T> = std::result::Result<T, MusoError>;

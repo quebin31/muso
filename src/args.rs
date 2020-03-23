@@ -21,7 +21,7 @@ use std::path::PathBuf;
 use clap::ArgMatches;
 
 use crate::config::Config;
-use crate::error::Result;
+use crate::error::AnyResult;
 
 #[derive(Debug, Clone)]
 pub struct Args {
@@ -34,7 +34,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn from_matches(matches: ArgMatches, config: &Config) -> Result<Self> {
+    pub fn from_matches(matches: ArgMatches, config: &Config) -> AnyResult<Self> {
         let working_path: PathBuf = matches
             .value_of("path")
             .map_or(env::current_dir()?.to_string_lossy().into(), |path| {

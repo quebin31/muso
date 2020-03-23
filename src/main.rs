@@ -29,7 +29,7 @@ use std::process;
 use clap::{clap_app, App as ClapApp};
 use human_panic::setup_panic;
 
-use crate::error::Result;
+use crate::error::AnyResult;
 use crate::logger::init_logger;
 use crate::muso::Muso;
 
@@ -37,7 +37,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
-fn run(app: ClapApp) -> Result<()> {
+fn run(app: ClapApp) -> AnyResult<()> {
     let matches = app.get_matches();
 
     if matches.is_present("copyservice") {
