@@ -15,11 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::str::FromStr;
+
 use nom::character::complete::{anychar, digit1};
 use nom::IResult;
 use nom::{alt, char, complete, delimited, many0, separated_pair, tag, take_while};
 
-use crate::error::MusoError;
+use crate::error::{MusoError, MusoResult};
+use crate::metadata::Metadata;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Placeholder {
@@ -52,7 +55,78 @@ pub enum Component {
     Placeholder(Placeholder),
 }
 
-pub type ParsedFormat = Vec<Component>;
+#[derive(Debug, Clone)]
+pub struct ParsedFormat {
+    components: Vec<Component>,
+}
+
+impl FromStr for ParsedFormat {
+    type Err = MusoError;
+    fn from_str(s: &str) -> MusoResult<Self> {
+        parse_format_string(s)
+    }
+}
+
+impl ParsedFormat {
+    pub fn build_path(&self, metadata: &Metadata, exfat_compat: bool) -> MusoResult<String> {
+        let mut path = String::with_capacity(128);
+
+        for component in &self.components {
+            match component {
+                Component::String(s) => path.push_str(&s),
+                Component::Placeholder(p) => {
+                    let value = match p {
+                        Placeholder::Artist => metadata.get_artist()?,
+                        Placeholder::Album => metadata.get_album()?,
+                        Placeholder::Disc { leading } => {
+                            let value = metadata.get_disc()?;
+                            Self::add_leading_zeros(value, *leading)
+                        }
+                        Placeholder::Track { leading } => {
+                            let value = metadata.get_track()?;
+                            Self::add_leading_zeros(value, *leading)
+                        }
+                        Placeholder::Title => metadata.get_title()?,
+                        Placeholder::Ext => metadata.get_ext(),
+                    };
+
+                    path.push_str(&Self::replace(value, exfat_compat));
+                }
+
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(path)
+    }
+
+    fn replace(string: String, exfat_compat: bool) -> String {
+        if exfat_compat {
+            string
+                .replace('/', "_")
+                .replace('"', "_")
+                .replace('*', "_")
+                .replace(':', "_")
+                .replace('<', "_")
+                .replace('>', "_")
+                .replace('\\', "_")
+                .replace('?', "_")
+                .replace('|', "_")
+        } else {
+            string.replace('/', "_")
+        }
+    }
+
+    fn add_leading_zeros(string: String, leading: u8) -> String {
+        if (leading as usize) > string.len() {
+            let mut res: String = vec!['0'; leading as usize - string.len()].iter().collect();
+            res.push_str(&string);
+            res
+        } else {
+            string
+        }
+    }
+}
 
 fn ident(input: &str) -> IResult<&str, &str> {
     alt! {
@@ -99,10 +173,10 @@ fn component(input: &str) -> IResult<&str, Component> {
     }
 }
 
-fn parse_inner(input: &str) -> IResult<&str, ParsedFormat> {
+fn parse_inner(input: &str) -> IResult<&str, Vec<Component>> {
     let (input, components) = many0!(input, component)?;
 
-    let mut parsed = ParsedFormat::new();
+    let mut parsed = Vec::new();
     let mut free = String::with_capacity(10);
     for component in components {
         match component {
@@ -126,13 +200,13 @@ fn parse_inner(input: &str) -> IResult<&str, ParsedFormat> {
     Ok((input, parsed))
 }
 
-pub fn parse_format_string(input: &str) -> Result<ParsedFormat, MusoError> {
+fn parse_format_string(input: &str) -> MusoResult<ParsedFormat> {
     let (rest, parsed) = parse_inner(input).map_err(|_| MusoError::FailedToParse)?;
 
     if !rest.is_empty() {
         Err(MusoError::FailedToParse)
     } else {
-        Ok(parsed)
+        Ok(ParsedFormat { components: parsed })
     }
 }
 
@@ -156,6 +230,18 @@ mod tests {
     #[test]
     fn component_parse() {
         assert_eq!(component("foo"), Ok(("oo", Component::Char('f'))));
+        assert_eq!(
+            component("{artist}"),
+            Ok(("", Component::Placeholder(Placeholder::Artist)))
+        );
+
+        assert_eq!(
+            component("{track:2}"),
+            Ok((
+                "",
+                Component::Placeholder(Placeholder::Track { leading: 2 })
+            ))
+        );
     }
 
     #[test]
