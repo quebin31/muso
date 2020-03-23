@@ -18,6 +18,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -26,8 +27,8 @@ use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 
 use crate::args::Args;
 use crate::config::Config;
-use crate::error::{MusoError, Result};
-use crate::format::{parse_format_string, ParsedFormat};
+use crate::error::{AnyResult, MusoError};
+use crate::format::ParsedFormat;
 use crate::metadata;
 use crate::utils;
 
@@ -40,7 +41,7 @@ pub struct Muso {
 }
 
 impl Muso {
-    pub fn from_matches(matches: ArgMatches) -> Result<Self> {
+    pub fn from_matches(matches: ArgMatches) -> AnyResult<Self> {
         let config_path = matches
             .value_of("config")
             .map_or(utils::default_config_path().to_string_lossy().into(), |v| {
@@ -49,7 +50,7 @@ impl Muso {
 
         let config = Config::from_path(config_path)?;
         let args = Args::from_matches(matches, &config)?;
-        let parsed_format = parse_format_string(&args.format)?;
+        let parsed_format = ParsedFormat::from_str(&args.format)?;
 
         Ok(Self {
             args,
@@ -59,7 +60,7 @@ impl Muso {
         })
     }
 
-    pub fn run(mut self) -> Result<()> {
+    pub fn run(mut self) -> AnyResult<()> {
         if self.args.watch_mode {
             if self.config.libraries.is_empty() {
                 log::info!("No directories to watch!");
@@ -105,7 +106,7 @@ impl Muso {
         &mut self,
         rx: mpsc::Receiver<DebouncedEvent>,
         library_for: HashMap<String, String>,
-    ) -> Result<()> {
+    ) -> AnyResult<()> {
         loop {
             let event = rx.recv();
             if let Err(e) = event {
@@ -154,7 +155,7 @@ impl Muso {
         }
     }
 
-    fn sort_folder(&mut self, root: &Path, folder: &Path) -> Result<(usize, usize)> {
+    fn sort_folder(&mut self, root: &Path, folder: &Path) -> AnyResult<(usize, usize)> {
         let results = fs::read_dir(folder)?.map(|entry| -> (usize, usize) {
             let entry = entry.expect("Cannot get entry!");
             let file_type = entry.file_type().expect("Cannot get file type!");
@@ -192,7 +193,7 @@ impl Muso {
         Ok((success, total))
     }
 
-    fn sort_file(&mut self, root: &Path, file: &Path) -> Result<()> {
+    fn sort_file(&mut self, root: &Path, file: &Path) -> AnyResult<()> {
         if self.args.dryrun {
             log::info!("Dry run on: \"{}\"", file.to_string_lossy());
         } else {
@@ -200,7 +201,9 @@ impl Muso {
         }
 
         let metadata = metadata::Metadata::from_path(file)?;
-        let new_path = metadata.build_path(&self.parsed_format, self.args.exfat_compat)?;
+        let new_path = self
+            .parsed_format
+            .build_path(&metadata, self.args.exfat_compat)?;
 
         if self.args.dryrun {
             log::info!("Item created: \"{}\"", new_path);
@@ -248,7 +251,7 @@ impl Muso {
         &mut self,
         ancestor: impl AsRef<Path>,
         library_for: &HashMap<String, String>,
-    ) -> Result<()> {
+    ) -> AnyResult<()> {
         let ancestor = ancestor.as_ref().to_string_lossy();
         let library = &library_for[ancestor.as_ref()];
 
@@ -257,7 +260,8 @@ impl Muso {
 
         self.args.format = format;
         self.args.exfat_compat = exfat_compat.unwrap_or(self.args.exfat_compat);
-        self.parsed_format = parse_format_string(&self.args.format)?;
+        self.parsed_format = ParsedFormat::from_str(&self.args.format)?;
+
         Ok(())
     }
 
