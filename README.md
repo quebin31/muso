@@ -29,9 +29,8 @@
 ## About
 
 **muso** is a CLI tool that helps you to keep your music folder sorted. It's
-designed to be simple and fast, but also powerful and fully automated.
-Currently **muso** supports MP3 and FLAC, but in the future it's planned to
-support most codecs for audio.
+designed to be simple and fast, but also powerful and fully automated. Currently 
+**muso** supports MP3, FLAC and OGG.
 
 ## Building
 To build **muso** yourself you need at least Rust 1.41. If you aren't going 
@@ -82,12 +81,22 @@ As an example, the default format that **muso** will use is the following.
 "{artist}/{album}/{track} - {title}.{ext}"
 ```
 
-Additionally, `{disc}` and `{track}` placeholders have the option to fill
+The `{disc}` and `{track}` placeholders have the option to fill
 with leading zeros, the syntax is `{disc:n}` or `{track:n}` where `n` is the
 length that has to be achieved adding leading zeros. For example, using `{disc:2}` will produce the following transformations:
 
 - `2` will become `02`
 - `10` will become `10`
+
+Finally, all of these placeholders (except `{ext}`) support an optional flag 
+(activated by adding a `?` before the `}`, e.g. `{artist?}`, `{disc:2?}`). 
+Renaming a file that doesn't have an specific tag doesn't fail but leaves empty 
+that placeholder in the string, however note that there are some rules:
+
+- Directory components cannot be optional (e.g. this is invalid `{artist}/{album?}/{title}.{ext}`)
+- File name component must have one required placeholder, apart from `{ext}` (e.g. this is invalid `{artist}/{title?}.{ext}`)
+
+**Note:** These rules may be different in the future if I find a better way to fill these "unknowns" (possibly using `?` for digits and `Unknown` for strings, or adding the option to provide a custom value).
 
 A format string can be specified for *oneshot* mode using the `-f/--format`
 option, or providing it in for each [library](#libraries) in the [config
