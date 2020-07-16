@@ -43,6 +43,12 @@ pub enum MusoError {
 
     #[error("Failed to parse format string")]
     FailedToParse,
+
+    #[error("Directory components in format string can't contain optionals")]
+    OptionalInDir,
+
+    #[error("File component must have one required placeholder (except from {{ext}})")]
+    RequiredInFile,
 }
 
 pub type AnyResult<T> = std::result::Result<T, anyhow::Error>;
