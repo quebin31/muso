@@ -151,7 +151,7 @@ impl Metadata {
         let mut map = HashMap::new();
 
         for (key, value) in list {
-            let entry = map.entry(key).or_insert_with(|| vec![]);
+            let entry = map.entry(key).or_insert_with(Vec::new);
             entry.push(value);
         }
 
