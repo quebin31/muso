@@ -50,7 +50,7 @@ impl Metadata {
         // NOTE(erichdongubler): This could be smaller if media types with larger magic bytes
         // length requirements for `infer` get removed, so let's keep a table below of length
         // required for each.
-        let mut magic_bytes = [0; 4];
+        let mut magic_bytes = [0; 11];
         file.read_exact(&mut magic_bytes)
             .map_err(|_| MusoError::NotSupported)?;
 
@@ -63,6 +63,8 @@ impl Metadata {
             "audio/mpeg" => Metadata::from_id3(&path),
             // Minimum: 4 bytes
             "audio/ogg" => Metadata::from_ogg_vorbis(&path),
+            // Minimum: 11 bytes (4 normally, 11 to include `m4p`)
+            "audio/m4a" => Metadata::from_m4a(&path),
             _ => Err(MusoError::NotSupported.into()),
         }
     }
@@ -162,6 +164,23 @@ impl Metadata {
         }
 
         map
+    }
+
+    fn from_m4a(path: impl AsRef<Path>) -> AnyResult<Self> {
+        let tag = mp4ameta::Tag::read_from_path(path.as_ref())?;
+
+        Ok(Metadata {
+            artist: tag.artist().map(|a| a.to_owned()),
+            album: tag.album().map(|a| a.to_owned()),
+            disc: tag
+                .disk_number()
+                .map(|(this_disk, _total_disks)| this_disk.into()),
+            track: tag
+                .track_number()
+                .map(|(this_track, _total_tracks)| this_track.into()),
+            title: tag.title().map(|a| a.to_owned()),
+            ext: "m4a".to_owned(),
+        })
     }
 
     pub fn get_artist(&self) -> MusoResult<String> {
@@ -279,4 +298,37 @@ mod tests {
         assert_eq!(Ok("Title".into()), metadata.get_title());
         assert_eq!("ogg".to_owned(), metadata.get_ext());
     }
+
+    #[test]
+    fn partial_m4a() {
+        // let metadata = Metadata::from_path(
+        //     // TODO(erichdongubler): use a relative path
+        //     r#"C:\Users\erich\erichdongubler\media\standalone\music\Ray Charles\The Spirit of Christmas\06 That Spirit of Christmas.m4p"#,
+        // );
+        todo!();
+    }
+
+    #[test]
+    fn partial_m4p() {
+        let metadata = Metadata::from_path(
+            // TODO(erichdongubler): use a relative path
+            r#"C:\Users\erich\erichdongubler\media\standalone\music\Ray Charles\The Spirit of Christmas\06 That Spirit of Christmas.m4p"#,
+        ).unwrap();
+
+        // assert_eq!(Ok("Artist".into()), metadata.get_artist());
+        // assert_eq!(
+        //     Err(MusoError::MissingTag {
+        //         tag: "album".into()
+        //     }),
+        //     metadata.get_album()
+        // );
+        // assert_eq!(Ok("1".into()), metadata.get_disc());
+        // assert_eq!(Ok("1".into()), metadata.get_track());
+        // assert_eq!(Ok("Title".into()), metadata.get_title());
+        // assert_eq!("ogg".to_owned(), metadata.get_ext());
+        todo!();
+    }
+
+    // NOTE(erichdongubler): It's probably not legal to include a whole `m4p` for testing unless
+    // one were to be made from scratch (i.e., please don't use one from iTunes).
 }
