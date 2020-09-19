@@ -47,6 +47,9 @@ macro_rules! impl_tag_getter {
 impl Metadata {
     pub fn from_path(path: impl AsRef<Path>) -> AnyResult<Self> {
         let mut file = File::open(&path)?;
+        // NOTE(erichdongubler): This could be smaller if media types with larger magic bytes
+        // length requirements for `infer` get removed, so let's keep a table below of length
+        // required for each.
         let mut magic_bytes = [0; 4];
         file.read_exact(&mut magic_bytes)
             .map_err(|_| MusoError::NotSupported)?;
@@ -54,8 +57,11 @@ impl Metadata {
         let infer = infer::Infer::new();
         let ftype = infer.get(&magic_bytes).ok_or(MusoError::NotSupported)?;
         match ftype.mime.as_str() {
+            // Minimum: 4 bytes
             "audio/x-flac" => Metadata::from_flac_vorbis(&path),
+            // Minimum: 4 bytes
             "audio/mpeg" => Metadata::from_id3(&path),
+            // Minimum: 4 bytes
             "audio/ogg" => Metadata::from_ogg_vorbis(&path),
             _ => Err(MusoError::NotSupported.into()),
         }
