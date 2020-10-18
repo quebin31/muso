@@ -560,7 +560,7 @@ dependencies = [
 
 [[package]]
 name = "muso"
-version = "1.5.0"
+version = "1.5.1"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
