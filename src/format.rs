@@ -65,10 +65,7 @@ pub enum Placeholder {
 
 impl Placeholder {
     pub fn is_optional(&self) -> bool {
-        match self {
-            Placeholder::Optional(_) => true,
-            _ => false,
-        }
+        matches!(self, Placeholder::Optional(_))
     }
 
     pub fn is_tag(&self, tag: Tag) -> bool {
