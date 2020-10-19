@@ -2,6 +2,7 @@ pub mod config;
 pub mod format;
 pub mod metadata;
 pub mod sorting;
+pub mod sync;
 pub mod utils;
 pub mod watcher;
 
