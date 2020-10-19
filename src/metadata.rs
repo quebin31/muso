@@ -172,8 +172,19 @@ impl Metadata {
     fn from_m4a(path: impl AsRef<Path>) -> AnyResult<Self> {
         let tag = mp4ameta::Tag::read_from_path(path.as_ref())?;
 
+        let artist = tag
+            .album_artist()
+            .or_else(|| tag.artist())
+            .map(|a| a.to_string());
+
+        let ext = path
+            .as_ref()
+            .extension()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "m4a".to_string());
+
         Ok(Metadata {
-            artist: tag.artist().map(|a| a.to_owned()),
+            artist,
             album: tag.album().map(|a| a.to_owned()),
             disc: tag
                 .disk_number()
@@ -182,7 +193,7 @@ impl Metadata {
                 .track_number()
                 .map(|(this_track, _total_tracks)| this_track.into()),
             title: tag.title().map(|a| a.to_owned()),
-            ext: "m4a".to_owned(),
+            ext,
         })
     }
 
@@ -213,125 +224,52 @@ impl Metadata {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    macro_rules! define_unit_test_for {
+        ($ext:ident) => {
+            #[cfg(test)]
+            mod $ext {
+                use $crate::error::MusoError;
+                use $crate::metadata::Metadata;
 
-    #[test]
-    fn complete_flac() {
-        let metadata = Metadata::from_path("test_files/complete.flac").unwrap();
+                #[test]
+                fn complete() {
+                    let ext = stringify!($ext);
+                    let metadata =
+                        Metadata::from_path(format!("test_files/complete.{}", ext)).unwrap();
 
-        assert_eq!(Ok("Album Artist".into()), metadata.get_artist());
-        assert_eq!(Ok("Album".into()), metadata.get_album());
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("flac".to_owned(), metadata.get_ext());
+                    assert_eq!(Ok("Album Artist".into()), metadata.get_artist());
+                    assert_eq!(Ok("Album".into()), metadata.get_album());
+                    assert_eq!(Ok("1".into()), metadata.get_disc());
+                    assert_eq!(Ok("1".into()), metadata.get_track());
+                    assert_eq!(Ok("Title".into()), metadata.get_title());
+                    assert_eq!(ext.to_string(), metadata.get_ext());
+                }
+
+                #[test]
+                fn partial() {
+                    let ext = stringify!($ext);
+                    let metadata =
+                        Metadata::from_path(format!("test_files/partial.{}", ext)).unwrap();
+
+                    assert_eq!(Ok("Artist".into()), metadata.get_artist());
+                    assert_eq!(
+                        Err(MusoError::MissingTag {
+                            tag: "album".into()
+                        }),
+                        metadata.get_album()
+                    );
+                    assert_eq!(Ok("1".into()), metadata.get_disc());
+                    assert_eq!(Ok("1".into()), metadata.get_track());
+                    assert_eq!(Ok("Title".into()), metadata.get_title());
+                    assert_eq!(ext.to_string(), metadata.get_ext());
+                }
+            }
+        };
     }
 
-    #[test]
-    fn partial_flac() {
-        let metadata = Metadata::from_path("test_files/partial.flac").unwrap();
-
-        assert_eq!(Ok("Artist".into()), metadata.get_artist());
-        assert_eq!(
-            Err(MusoError::MissingTag {
-                tag: "album".into()
-            }),
-            metadata.get_album()
-        );
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("flac".to_owned(), metadata.get_ext());
-    }
-
-    #[test]
-    fn complete_mp3() {
-        let metadata = Metadata::from_path("test_files/complete.mp3").unwrap();
-
-        assert_eq!(Ok("Album Artist".into()), metadata.get_artist());
-        assert_eq!(Ok("Album".into()), metadata.get_album());
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("mp3".to_owned(), metadata.get_ext());
-    }
-
-    #[test]
-    fn partial_mp3() {
-        let metadata = Metadata::from_path("test_files/partial.mp3").unwrap();
-
-        assert_eq!(Ok("Artist".into()), metadata.get_artist());
-        assert_eq!(
-            Err(MusoError::MissingTag {
-                tag: "album".into()
-            }),
-            metadata.get_album()
-        );
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("mp3".to_owned(), metadata.get_ext());
-    }
-
-    #[test]
-    fn complete_ogg() {
-        let metadata = Metadata::from_path("test_files/complete.ogg").unwrap();
-
-        assert_eq!(Ok("Album Artist".into()), metadata.get_artist());
-        assert_eq!(Ok("Album".into()), metadata.get_album());
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("ogg".to_owned(), metadata.get_ext());
-    }
-
-    #[test]
-    fn partial_ogg() {
-        let metadata = Metadata::from_path("test_files/partial.ogg").unwrap();
-
-        assert_eq!(Ok("Artist".into()), metadata.get_artist());
-        assert_eq!(
-            Err(MusoError::MissingTag {
-                tag: "album".into()
-            }),
-            metadata.get_album()
-        );
-        assert_eq!(Ok("1".into()), metadata.get_disc());
-        assert_eq!(Ok("1".into()), metadata.get_track());
-        assert_eq!(Ok("Title".into()), metadata.get_title());
-        assert_eq!("ogg".to_owned(), metadata.get_ext());
-    }
-
-    #[test]
-    fn partial_m4a() {
-        // let metadata = Metadata::from_path(
-        //     // TODO(erichdongubler): use a relative path
-        //     r#"C:\Users\erich\erichdongubler\media\standalone\music\Ray Charles\The Spirit of Christmas\06 That Spirit of Christmas.m4p"#,
-        // );
-        todo!();
-    }
-
-    #[test]
-    fn partial_m4p() {
-        let metadata = Metadata::from_path(
-            // TODO(erichdongubler): use a relative path
-            r#"C:\Users\erich\erichdongubler\media\standalone\music\Ray Charles\The Spirit of Christmas\06 That Spirit of Christmas.m4p"#,
-        ).unwrap();
-
-        // assert_eq!(Ok("Artist".into()), metadata.get_artist());
-        // assert_eq!(
-        //     Err(MusoError::MissingTag {
-        //         tag: "album".into()
-        //     }),
-        //     metadata.get_album()
-        // );
-        // assert_eq!(Ok("1".into()), metadata.get_disc());
-        // assert_eq!(Ok("1".into()), metadata.get_track());
-        // assert_eq!(Ok("Title".into()), metadata.get_title());
-        // assert_eq!("ogg".to_owned(), metadata.get_ext());
-        todo!();
-    }
-
-    // NOTE(erichdongubler): It's probably not legal to include a whole `m4p` for testing unless
-    // one were to be made from scratch (i.e., please don't use one from iTunes).
+    define_unit_test_for!(flac);
+    define_unit_test_for!(mp3);
+    define_unit_test_for!(ogg);
+    define_unit_test_for!(m4a);
+    define_unit_test_for!(m4p);
 }
