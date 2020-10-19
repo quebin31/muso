@@ -250,7 +250,7 @@ mod tests {
 
                     assert_eq!(Ok("Artist".into()), metadata.get_artist());
                     assert_eq!(
-                        Err(MusoError::MissingTag {
+                        Err(Error::MissingTag {
                             tag: "album".into()
                         }),
                         metadata.get_album()
