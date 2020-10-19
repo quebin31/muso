@@ -57,4 +57,16 @@ pub enum Error {
         #[from]
         source: metaflac::Error,
     },
+
+    #[error("Vorbis error (source: {source})")]
+    VorbisError {
+        #[from]
+        source: lewton::VorbisError,
+    },
+
+    #[error("M4aMeta error (source: {source})")]
+    M4aMetaError {
+        #[from]
+        source: mp4ameta::Error,
+    },
 }
