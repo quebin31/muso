@@ -1,5 +1,9 @@
+pub mod config;
 pub mod format;
 pub mod metadata;
+pub mod sorting;
+pub mod utils;
+pub mod watcher;
 
 use std::io;
 use thiserror::Error;
@@ -28,8 +32,8 @@ pub enum Error {
     #[error("Resource \"{path}\" was not found!")]
     ResourceNotFound { path: String },
 
-    #[error("Invalid config file: \"{path}\" ({reason})")]
-    InvalidConfig { path: String, reason: String },
+    #[error("Invalid config file: {reason}")]
+    InvalidConfig { reason: String },
 
     #[error("Failed to parse format string")]
     FailedToParse,
@@ -68,5 +72,11 @@ pub enum Error {
     M4aMetaError {
         #[from]
         source: mp4ameta::Error,
+    },
+
+    #[error("Notify error (source: {source})")]
+    NotifyError {
+        #[from]
+        source: notify::Error,
     },
 }
