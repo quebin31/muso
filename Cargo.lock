@@ -148,12 +148,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "common_macros"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3f6d59c71e7dc3af60f0af9db32364d96a16e9310f3f5db2b55ed642162dd35"
-
-[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -483,14 +477,20 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 name = "libmuso"
 version = "1.5.1"
 dependencies = [
+ "dirs 3.0.1",
  "id3",
  "infer",
  "lewton",
+ "log",
  "metaflac",
  "mp4ameta",
  "nom",
+ "notify",
  "ogg",
+ "serde",
+ "shellexpand",
  "thiserror",
+ "toml",
 ]
 
 [[package]]
@@ -596,17 +596,10 @@ dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
  "clap",
- "common_macros",
- "dirs 3.0.1",
  "human-panic",
- "lazy_static",
  "libmuso",
  "log",
- "notify",
- "serde",
- "shellexpand",
  "thiserror",
- "toml",
 ]
 
 [[package]]
