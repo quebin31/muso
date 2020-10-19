@@ -21,7 +21,7 @@ use std::result::Result as StdResult;
 use std::{path::PathBuf, str::FromStr};
 
 use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use self::parser::parse_format_string;
 use self::parser::{BasicComponent, FsComponent};
@@ -33,6 +33,7 @@ use crate::{Error, Result};
 #[derive(Debug, Clone)]
 pub struct ParsedFormat {
     fs_components: Vec<FsComponent>,
+    orig_string: String,
 }
 
 impl FromStr for ParsedFormat {
@@ -71,7 +72,10 @@ impl FromStr for ParsedFormat {
             fs_components.push(FsComponent::File(fs_component));
         }
 
-        Ok(Self { fs_components })
+        Ok(Self {
+            fs_components,
+            orig_string: s.to_string(),
+        })
     }
 }
 
@@ -98,6 +102,15 @@ impl<'d> Deserialize<'d> for ParsedFormat {
         D: Deserializer<'d>,
     {
         deserializer.deserialize_str(ParsedFormatVisitor)
+    }
+}
+
+impl Serialize for ParsedFormat {
+    fn serialize<S>(&self, serializer: S) -> StdResult<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.orig_string)
     }
 }
 
