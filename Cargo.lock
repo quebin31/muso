@@ -576,7 +576,7 @@ checksum = "70d5c5a80022eaf0a3e95f9a8645a5691e398c7d7e00e5c2a959e7fc9522ec97"
 
 [[package]]
 name = "muso"
-version = "1.5.1"
+version = "1.5.2"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
