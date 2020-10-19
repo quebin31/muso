@@ -113,3 +113,5 @@ macro_rules! define_tests_for {
 define_tests_for!(flac);
 define_tests_for!(mp3);
 define_tests_for!(ogg);
+define_tests_for!(m4a);
+define_tests_for!(m4p);
