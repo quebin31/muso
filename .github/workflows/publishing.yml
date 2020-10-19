@@ -73,15 +73,3 @@ jobs:
           files: release.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Commit pkgbuild submodule
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add pkgbuild
-          git commit -m "Bumped to version $VERSION"
-        env:
-          VERSION: ${{ env.VERSION }}
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
