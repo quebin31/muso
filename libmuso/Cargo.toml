@@ -7,11 +7,20 @@ version = "1.5.1"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dirs = "3.0.1"
 id3 = "0.5.1"
 infer = "0.2.3"
 lewton = "0.10.1"
+log = "0.4.11"
 metaflac = "0.2.4"
 mp4ameta = "0.4.1"
 nom = "5.1.2"
+notify = "4.0.15"
 ogg = "0.7.0"
+shellexpand = "2.0.0"
 thiserror = "1.0.21"
+toml = "0.5.7"
+
+[dependencies.serde]
+features = ["derive"]
+version = "1.0.117"
