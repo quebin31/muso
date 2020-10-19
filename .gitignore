@@ -1,4 +1,4 @@
-/target
+**/target
 **/*.rs.bk
 /music
 share/test.toml
