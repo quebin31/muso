@@ -4,9 +4,9 @@ macro_rules! define_tests_for {
         mod $ext {
             use std::str::FromStr;
 
-            use muso::error::{AnyResult, MusoError};
-            use muso::format::ParsedFormat;
-            use muso::metadata::Metadata;
+            use libmuso::format::ParsedFormat;
+            use libmuso::metadata::Metadata;
+            use libmuso::{Error, Result};
 
             #[test]
             fn complete_with_ok_format() -> AnyResult<()> {
