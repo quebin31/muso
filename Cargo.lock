@@ -559,6 +559,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mp4ameta"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b4307463796986ce2979f6e34d380137e05cbbdb838a2549e6ac0e21327527f"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "muso"
 version = "1.5.1"
 dependencies = [
@@ -575,6 +584,7 @@ dependencies = [
  "lewton",
  "log",
  "metaflac",
+ "mp4ameta",
  "nom",
  "notify",
  "ogg",
