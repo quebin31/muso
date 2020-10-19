@@ -560,12 +560,19 @@ dependencies = [
 
 [[package]]
 name = "mp4ameta"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b4307463796986ce2979f6e34d380137e05cbbdb838a2549e6ac0e21327527f"
+checksum = "a45c248a6ff110934e59064d5f150886012719ef8dfffa2848e5e03f01810f78"
 dependencies = [
  "byteorder",
+ "mp4ameta_proc",
 ]
+
+[[package]]
+name = "mp4ameta_proc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70d5c5a80022eaf0a3e95f9a8645a5691e398c7d7e00e5c2a959e7fc9522ec97"
 
 [[package]]
 name = "muso"
