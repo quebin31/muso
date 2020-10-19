@@ -65,7 +65,8 @@ impl Metadata {
             "audio/ogg" => Metadata::from_ogg_vorbis(&path),
             // Minimum: 11 bytes (4 normally, 11 to include `m4p`)
             "audio/m4a" => Metadata::from_m4a(&path),
-            _ => Err(Error::NotSupported.into()),
+            // Unsupported file
+            _ => Err(Error::NotSupported),
         }
     }
 
@@ -169,7 +170,7 @@ impl Metadata {
         map
     }
 
-    fn from_m4a(path: impl AsRef<Path>) -> AnyResult<Self> {
+    fn from_m4a(path: impl AsRef<Path>) -> Result<Self> {
         let tag = mp4ameta::Tag::read_from_path(path.as_ref())?;
 
         let artist = tag
@@ -193,7 +194,7 @@ impl Metadata {
         })
     }
 
-    pub fn get_artist(&self) -> MusoResult<String> {
+    pub fn get_artist(&self) -> Result<String> {
         impl_tag_getter!(self, artist)
     }
 
@@ -224,8 +225,8 @@ mod tests {
         ($ext:ident) => {
             #[cfg(test)]
             mod $ext {
-                use $crate::error::MusoError;
                 use $crate::metadata::Metadata;
+                use $crate::Error;
 
                 #[test]
                 fn complete() {

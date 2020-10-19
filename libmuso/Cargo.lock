@@ -184,12 +184,13 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
 name = "libmuso"
-version = "0.1.0"
+version = "1.5.1"
 dependencies = [
  "id3",
  "infer",
  "lewton",
  "metaflac",
+ "mp4ameta",
  "nom",
  "ogg",
  "thiserror",
@@ -230,6 +231,22 @@ dependencies = [
  "adler",
  "autocfg",
 ]
+
+[[package]]
+name = "mp4ameta"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a45c248a6ff110934e59064d5f150886012719ef8dfffa2848e5e03f01810f78"
+dependencies = [
+ "byteorder",
+ "mp4ameta_proc",
+]
+
+[[package]]
+name = "mp4ameta_proc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70d5c5a80022eaf0a3e95f9a8645a5691e398c7d7e00e5c2a959e7fc9522ec97"
 
 [[package]]
 name = "nom"
