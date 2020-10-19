@@ -15,13 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
-#[cfg(feature = "standalone")]
-use std::{fs::File, io::Write};
-
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::error::{AnyResult, MusoError};
+use crate::{Error, Result};
 
 #[inline]
 pub fn default_config_path() -> PathBuf {
@@ -45,20 +43,12 @@ pub fn maybe_create_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
     }
 }
 
-pub fn is_empty_dir(path: impl AsRef<Path>) -> AnyResult<bool> {
-    if !path.as_ref().is_dir() {
-        Ok(false)
-    } else {
-        Ok(fs::read_dir(path)?.count() == 0)
-    }
-}
-
 pub enum Resource {
     Config,
     Service,
 }
 
-pub fn generate_resource(res: Resource) -> AnyResult<()> {
+pub fn generate_resource(res: Resource, default: Option<&str>) -> Result<()> {
     let name = match res {
         Resource::Config => "config",
         Resource::Service => "service",
@@ -71,47 +61,32 @@ pub fn generate_resource(res: Resource) -> AnyResult<()> {
 
     log::info!("Generating {} file", name);
 
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "standalone")] {
-            log::info!("Writing {} file", name);
+    let shared = match res {
+        Resource::Config => Path::new("/usr/share/muso/muso.service"),
+        Resource::Service => Path::new("/usr/share/muso/config.toml"),
+    };
 
-            maybe_create_dir(dest.parent().ok_or(MusoError::InvalidParent {
-                child: dest.to_string_lossy().into(),
-            })?)?;
-
+    if !shared.exists() {
+        if let Some(default) = default {
             let mut file = File::create(&dest)?;
-            let contents = match res {
-                Resource::Config => include_str!("../share/config.toml"),
-                Resource::Service => include_str!("../share/muso.service"),
-            };
-
-            write!(file, "{}", contents)?;
-
+            write!(file, "{}", default)?;
             log::info!("Successfully written to: \"{}\"", dest.to_string_lossy());
         } else {
-            let shared = match res {
-                Resource::Config => Path::new("/usr/share/muso/muso.service"),
-                Resource::Service => Path::new("/usr/share/muso/config.toml"),
-            };
-
-            if !shared.exists() {
-                return Err(MusoError::ResourceNotFound {
-                    path: shared.to_string_lossy().into(),
-                }.into());
-            } else {
-                log::info!("Copying {} file from shared assets", name);
-
-                maybe_create_dir(dest.parent().ok_or(MusoError::InvalidParent {
-                    child: dest.to_string_lossy().into(),
-                })?)?;
-                fs::copy(shared, &dest)?;
-
-                log::info! {
-                    "Successfully copied to: \"{}\"",
-                    dest.to_string_lossy()
-                };
-            }
+            return Err(Error::ResourceNotFound {
+                path: shared.to_string_lossy().into(),
+            });
         }
+    } else {
+        log::info!("Copying {} file from shared assets", name);
+
+        let parent = dest.parent().ok_or(Error::InvalidParent {
+            child: dest.to_string_lossy().into(),
+        })?;
+
+        maybe_create_dir(parent)?;
+        fs::copy(shared, &dest)?;
+
+        log::info!("Successfully copied to: \"{}\"", dest.to_string_lossy());
     }
 
     log::info!("Successfully generated {} file", name);
