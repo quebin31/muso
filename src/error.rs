@@ -18,38 +18,7 @@
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Error)]
-pub enum MusoError {
-    #[error("File type not supported!")]
-    NotSupported,
-
-    #[error("Empty vorbis comments!")]
-    EmptyComments,
-
-    #[error("Parent directory of \"{child}\" is not valid!")]
-    InvalidParent { child: String },
-
+pub enum Error {
     #[error("Path {path} is not valid as root folder!")]
     InvalidRoot { path: String },
-
-    #[error("Tag property {tag} is missing!")]
-    MissingTag { tag: String },
-
-    #[cfg(not(feature = "standalone"))]
-    #[error("Resource \"{path}\" was not found!")]
-    ResourceNotFound { path: String },
-
-    #[error("Invalid config file: \"{path}\" ({reason})")]
-    InvalidConfig { path: String, reason: String },
-
-    #[error("Failed to parse format string")]
-    FailedToParse,
-
-    #[error("Directory components in format string can't contain optionals")]
-    OptionalInDir,
-
-    #[error("File component must have one required placeholder (except from {{ext}})")]
-    RequiredInFile,
 }
-
-pub type AnyResult<T> = std::result::Result<T, anyhow::Error>;
-pub type MusoResult<T> = std::result::Result<T, MusoError>;
