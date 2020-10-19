@@ -11,20 +11,10 @@ ansi_term = "0.12.1"
 anyhow = "1.0.33"
 cfg-if = "1.0.0"
 clap = "2.33.3"
-common_macros = "0.1.1"
-dirs = "3.0.1"
 human-panic = "1.0.3"
-lazy_static = "1.4.0"
 libmuso = {version = "1.5.1", path = "./libmuso"}
 log = "0.4.11"
-notify = "4.0.15"
-shellexpand = "2.0.0"
 thiserror = "1.0.21"
-toml = "0.5.7"
-
-[dependencies.serde]
-features = ["derive"]
-version = "1.0.117"
 
 [features]
 default = []
