@@ -187,8 +187,8 @@ impl Metadata {
         Ok(Metadata {
             artist,
             album: tag.album().map(|a| a.to_owned()),
-            disc: tag.disc_number().0.map(|this_disk| this_disk.into()),
-            track: tag.track_number().0.map(|this_track| this_track.into()),
+            disc: tag.disc_number().map(|this_disk| this_disk.into()),
+            track: tag.track_number().map(|this_track| this_track.into()),
             title: tag.title().map(|a| a.to_owned()),
             ext,
         })
