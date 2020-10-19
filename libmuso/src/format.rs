@@ -30,8 +30,8 @@ use nom::sequence::delimited;
 use nom::sequence::tuple;
 use nom::IResult;
 
-use crate::error::{MusoError, MusoResult};
 use crate::metadata::Metadata;
+use crate::{Error, Result};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Tag {
@@ -99,9 +99,9 @@ pub struct ParsedFormat {
 }
 
 impl FromStr for ParsedFormat {
-    type Err = MusoError;
+    type Err = Error;
 
-    fn from_str(s: &str) -> MusoResult<Self> {
+    fn from_str(s: &str) -> Result<Self> {
         let basic_components = parse_format_string(s)?;
 
         let mut fs_components = Vec::new();
@@ -139,7 +139,7 @@ impl FromStr for ParsedFormat {
 }
 
 impl ParsedFormat {
-    pub fn build_path(&self, metadata: &Metadata, exfat_compat: bool) -> MusoResult<String> {
+    pub fn build_path(&self, metadata: &Metadata, exfat_compat: bool) -> Result<String> {
         let mut path = String::with_capacity(128);
 
         for fs_component in &self.fs_components {
@@ -153,7 +153,7 @@ impl ParsedFormat {
 
                             BasicComponent::Placeholder(p) => {
                                 let s = Self::get_from_metadata(metadata, *p)?
-                                    .ok_or_else(|| MusoError::OptionalInDir)?;
+                                    .ok_or_else(|| Error::OptionalInDir)?;
 
                                 path.push_str(&Self::replace(s, exfat_compat));
                             }
@@ -184,7 +184,7 @@ impl ParsedFormat {
                     }
 
                     if required_founds < 1 {
-                        return Err(MusoError::RequiredInFile);
+                        return Err(Error::RequiredInFile);
                     }
                 }
             }
@@ -220,7 +220,7 @@ impl ParsedFormat {
         }
     }
 
-    fn get_from_metadata(metadata: &Metadata, pholder: Placeholder) -> MusoResult<Option<String>> {
+    fn get_from_metadata(metadata: &Metadata, pholder: Placeholder) -> Result<Option<String>> {
         let is_optional = pholder.is_optional();
         let tag = pholder.into_tag();
 
@@ -336,11 +336,11 @@ fn components(input: &str) -> IResult<&str, Vec<BasicComponent>> {
     many1(component)(input)
 }
 
-fn parse_format_string(input: &str) -> MusoResult<Vec<BasicComponent>> {
-    let (rest, parsed) = components(input).map_err(|_| MusoError::FailedToParse)?;
+fn parse_format_string(input: &str) -> Result<Vec<BasicComponent>> {
+    let (rest, parsed) = components(input).map_err(|_| Error::FailedToParse)?;
 
     if !rest.is_empty() {
-        Err(MusoError::FailedToParse)
+        Err(Error::FailedToParse)
     } else {
         Ok(parsed)
     }

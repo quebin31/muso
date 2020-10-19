@@ -18,6 +18,7 @@ id3 = "0.5.1"
 infer = "0.2.3"
 lazy_static = "1.4.0"
 lewton = "0.10.1"
+libmuso = {version = "1.5.1", path = "./libmuso"}
 log = "0.4.11"
 metaflac = "0.2.4"
 mp4ameta = "0.4.1"

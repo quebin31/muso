@@ -20,7 +20,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::error::{AnyResult, MusoError, MusoResult};
+use crate::{Error, Result};
 
 #[derive(Debug)]
 pub struct Metadata {
@@ -37,7 +37,7 @@ macro_rules! impl_tag_getter {
         $self
             .$tag
             .as_ref()
-            .ok_or_else(|| MusoError::MissingTag {
+            .ok_or_else(|| Error::MissingTag {
                 tag: stringify!($tag).into(),
             })
             .map(|s| s.to_string())
@@ -45,17 +45,17 @@ macro_rules! impl_tag_getter {
 }
 
 impl Metadata {
-    pub fn from_path(path: impl AsRef<Path>) -> AnyResult<Self> {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
         let mut file = File::open(&path)?;
         // NOTE(erichdongubler): This could be smaller if media types with larger magic bytes
         // length requirements for `infer` get removed, so let's keep a table below of length
         // required for each.
         let mut magic_bytes = [0; 11];
         file.read_exact(&mut magic_bytes)
-            .map_err(|_| MusoError::NotSupported)?;
+            .map_err(|_| Error::NotSupported)?;
 
         let infer = infer::Infer::new();
-        let ftype = infer.get(&magic_bytes).ok_or(MusoError::NotSupported)?;
+        let ftype = infer.get(&magic_bytes).ok_or(Error::NotSupported)?;
         match ftype.mime.as_str() {
             // Minimum: 4 bytes
             "audio/x-flac" => Metadata::from_flac_vorbis(&path),
@@ -65,11 +65,11 @@ impl Metadata {
             "audio/ogg" => Metadata::from_ogg_vorbis(&path),
             // Minimum: 11 bytes (4 normally, 11 to include `m4p`)
             "audio/m4a" => Metadata::from_m4a(&path),
-            _ => Err(MusoError::NotSupported.into()),
+            _ => Err(Error::NotSupported.into()),
         }
     }
 
-    fn from_id3(path: impl AsRef<Path>) -> AnyResult<Self> {
+    fn from_id3(path: impl AsRef<Path>) -> Result<Self> {
         let tag = match id3::Tag::read_from_path(path) {
             Ok(tag) => tag,
             Err(err) => err.partial_tag.clone().ok_or_else(|| err)?,
@@ -96,18 +96,18 @@ impl Metadata {
         })
     }
 
-    fn from_flac_vorbis(path: impl AsRef<Path>) -> AnyResult<Self> {
+    fn from_flac_vorbis(path: impl AsRef<Path>) -> Result<Self> {
         let tag = metaflac::Tag::read_from_path(path)?;
         let comments = tag
             .vorbis_comments()
-            .ok_or(MusoError::EmptyComments)?
+            .ok_or(Error::EmptyComments)?
             .comments
             .to_owned();
 
         Self::from_vorbis_comments(comments, "flac")
     }
 
-    fn from_ogg_vorbis(path: impl AsRef<Path>) -> AnyResult<Self> {
+    fn from_ogg_vorbis(path: impl AsRef<Path>) -> Result<Self> {
         let file = File::open(path)?;
         let mut reader = ogg::reading::PacketReader::new(file);
         let ((_, comments, _), _) = lewton::inside_ogg::read_headers(&mut reader)?;
@@ -116,7 +116,7 @@ impl Metadata {
         Self::from_vorbis_comments(comments, "ogg")
     }
 
-    fn from_vorbis_comments(comments: HashMap<String, Vec<String>>, ext: &str) -> AnyResult<Self> {
+    fn from_vorbis_comments(comments: HashMap<String, Vec<String>>, ext: &str) -> Result<Self> {
         let artist = if let Some(artist) = comments.get("ALBUMARTIST").and_then(|a| a.get(0)) {
             Some(artist.to_owned())
         } else {
@@ -197,19 +197,19 @@ impl Metadata {
         impl_tag_getter!(self, artist)
     }
 
-    pub fn get_album(&self) -> MusoResult<String> {
+    pub fn get_album(&self) -> Result<String> {
         impl_tag_getter!(self, album)
     }
 
-    pub fn get_disc(&self) -> MusoResult<String> {
+    pub fn get_disc(&self) -> Result<String> {
         impl_tag_getter!(self, disc)
     }
 
-    pub fn get_track(&self) -> MusoResult<String> {
+    pub fn get_track(&self) -> Result<String> {
         impl_tag_getter!(self, track)
     }
 
-    pub fn get_title(&self) -> MusoResult<String> {
+    pub fn get_title(&self) -> Result<String> {
         impl_tag_getter!(self, title)
     }
 
