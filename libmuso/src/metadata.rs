@@ -226,39 +226,38 @@ mod tests {
             #[cfg(test)]
             mod $ext {
                 use $crate::metadata::Metadata;
-                use $crate::Error;
+                use $crate::Result;
 
                 #[test]
-                fn complete() {
+                fn complete() -> Result<()> {
                     let ext = stringify!($ext);
                     let metadata =
                         Metadata::from_path(format!("test_files/complete.{}", ext)).unwrap();
 
-                    assert_eq!(Ok("Album Artist".into()), metadata.get_artist());
-                    assert_eq!(Ok("Album".into()), metadata.get_album());
-                    assert_eq!(Ok("1".into()), metadata.get_disc());
-                    assert_eq!(Ok("1".into()), metadata.get_track());
-                    assert_eq!(Ok("Title".into()), metadata.get_title());
-                    assert_eq!(ext.to_string(), metadata.get_ext());
+                    assert_eq!("Album Artist", &metadata.get_artist()?);
+                    assert_eq!("Album", &metadata.get_album()?);
+                    assert_eq!("1", &metadata.get_disc()?);
+                    assert_eq!("1", &metadata.get_track()?);
+                    assert_eq!("Title", &metadata.get_title()?);
+                    assert_eq!(ext, &metadata.get_ext());
+
+                    Ok(())
                 }
 
                 #[test]
-                fn partial() {
+                fn partial() -> Result<()> {
                     let ext = stringify!($ext);
                     let metadata =
                         Metadata::from_path(format!("test_files/partial.{}", ext)).unwrap();
 
-                    assert_eq!(Ok("Artist".into()), metadata.get_artist());
-                    assert_eq!(
-                        Err(Error::MissingTag {
-                            tag: "album".into()
-                        }),
-                        metadata.get_album()
-                    );
-                    assert_eq!(Ok("1".into()), metadata.get_disc());
-                    assert_eq!(Ok("1".into()), metadata.get_track());
-                    assert_eq!(Ok("Title".into()), metadata.get_title());
-                    assert_eq!(ext.to_string(), metadata.get_ext());
+                    assert_eq!("Artist", &metadata.get_artist()?);
+                    assert!(metadata.get_album().is_err());
+                    assert_eq!("1", &metadata.get_disc()?);
+                    assert_eq!("1", &metadata.get_track()?);
+                    assert_eq!("Title", &metadata.get_title()?);
+                    assert_eq!(ext, &metadata.get_ext());
+
+                    Ok(())
                 }
             }
         };
