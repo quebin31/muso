@@ -2,9 +2,11 @@ pub mod config;
 pub mod format;
 pub mod metadata;
 pub mod sorting;
-pub mod sync;
 pub mod utils;
 pub mod watcher;
+
+#[cfg(feature = "sync")]
+pub mod sync;
 
 use std::io;
 use thiserror::Error;
@@ -45,6 +47,9 @@ pub enum Error {
     #[error("File component must have one required placeholder (except from {{ext}})")]
     RequiredInFile,
 
+    #[error("Invalid sha256 sum found while parsing")]
+    InvalidSha256,
+
     #[error("I/O error (source: {source})")]
     IoError {
         #[from]
@@ -79,5 +84,11 @@ pub enum Error {
     NotifyError {
         #[from]
         source: notify::Error,
+    },
+
+    #[error("Bincode error (source: {source})")]
+    BincodeError {
+        #[from]
+        source: bincode::Error,
     },
 }
