@@ -181,8 +181,9 @@ impl ParsedFormat {
                 .replace('\\', "_")
                 .replace('?', "_")
                 .replace('|', "_")
+                .replace('.', "_")
         } else {
-            string.replace('/', "_")
+            string.replace('/', "_").replace('.', "_")
         }
     }
 
