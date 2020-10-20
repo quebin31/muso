@@ -216,6 +216,17 @@ fn main() {
                 ),
         );
 
+    let app = {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "sync")] {
+                app
+                    .subcommand(App::new("sync").about("Sync your music to your Android device"))
+            } else {
+                app
+            }
+        }
+    };
+
     process::exit(match run(app) {
         Err(e) => {
             log::error!("{}", e);
