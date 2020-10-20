@@ -12,10 +12,11 @@ anyhow = "1.0.33"
 cfg-if = "1.0.0"
 clap = "2.33.3"
 human-panic = "1.0.3"
-libmuso = {version = "1.5.1", path = "./libmuso"}
+libmuso = {version = "1.5.1", path = "libmuso"}
 log = "0.4.11"
 thiserror = "1.0.21"
 
 [features]
 default = []
 standalone = []
+sync = ["libmuso/sync"]
