@@ -86,6 +86,7 @@ pub enum Error {
         source: notify::Error,
     },
 
+    #[cfg(feature = "sync")]
     #[error("Bincode error (source: {source})")]
     BincodeError {
         #[from]
