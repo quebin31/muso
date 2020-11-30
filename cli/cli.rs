@@ -1,20 +1,13 @@
-use std::env;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use clap::Clap;
-use muso::config::Config;
-use muso::format::ParsedFormat;
-use muso::sorting::Options;
-use nom::combinator::ParserIterator;
-
-const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
+use clap::{crate_authors, crate_description, crate_name, crate_version};
 
 #[derive(Debug, Clap)]
-#[clap(name = "muso")]
-#[clap(about = ABOUT)]
-#[clap(author = AUTHORS)]
+#[clap(name = crate_name!())]
+#[clap(about = crate_description!())]
+#[clap(author = crate_authors!())]
+#[clap(version = crate_version!())]
 pub struct CliArgs {
     /// Path to custom config file.
     #[clap(short, long)]
@@ -36,14 +29,13 @@ pub enum SubCommand {
     /// Sort a music directory.
     Sort {
         /// Path to music directory.
-        #[clap(parse(try_from_str = parse_path))]
-        path: PathBuf,
+        path: Option<PathBuf>,
 
-        /// Custom format string
+        /// Custom format string.
         #[clap(short, long)]
         format: Option<String>,
 
-        /// Don't sort anything. Simulated run.
+        /// Don't sort anything (simulated run).
         #[clap(short, long)]
         dryrun: bool,
 
@@ -52,7 +44,7 @@ pub enum SubCommand {
         recursive: bool,
 
         /// Remove empty directories found while and after sorting.
-        #[clap(short, long)]
+        #[clap(name = "rm-empty", long)]
         remove_empty: bool,
 
         /// Mantain file names compatible with FAT32.
@@ -64,35 +56,3 @@ pub enum SubCommand {
     #[cfg(feature = "sync")]
     Sync,
 }
-
-fn parse_path(path: &str) -> Result<PathBuf, &'static str> {
-    todo!()
-}
-
-/*
-impl SubCommand {
-    pub fn build_sort_options(&self, config: &Config) -> Option<Options<ParsedFormat>> {
-        match self {
-            Self::Sort { path, format, .. } => {
-                let format = format
-                    .clone()
-                    .map_or(config.search_format(&path).cloned(), |s| {
-                        ParsedFormat::from_str(&s).ok()
-                    })
-                    .unwrap_or_else(|| {
-                        ParsedFormat::from_str("{artist}/{album}/{track} - {title}.{ext}").unwrap()
-                    });
-
-                Some(Options {
-                    format,
-                    dryrun: (),
-                    recursive: (),
-                    exfat_compat: (),
-                    remove_empty: (),
-                })
-            }
-            _ => None,
-        }
-    }
-}
-*/
