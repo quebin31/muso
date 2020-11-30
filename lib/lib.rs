@@ -91,4 +91,8 @@ pub enum Error {
         #[from]
         source: bincode::Error,
     },
+
+    #[cfg(feature = "sync")]
+    #[error("Invalid address to build JSON-RPC server")]
+    InvalidAddress,
 }
