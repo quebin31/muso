@@ -56,7 +56,7 @@ impl Metadata {
 
         let infer = infer::Infer::new();
         let ftype = infer.get(&magic_bytes).ok_or(Error::NotSupported)?;
-        match ftype.mime.as_str() {
+        match ftype.mime_type() {
             // Minimum: 4 bytes
             "audio/x-flac" => Metadata::from_flac_vorbis(&path),
             // Minimum: 4 bytes
@@ -226,7 +226,7 @@ mod tests {
             #[cfg(test)]
             mod $ext {
                 use $crate::metadata::Metadata;
-                use $crate::Result;
+                use $crate::{Error, Result};
 
                 #[test]
                 fn complete() -> Result<()> {
@@ -251,11 +251,15 @@ mod tests {
                         Metadata::from_path(format!("test_files/partial.{}", ext)).unwrap();
 
                     assert_eq!("Artist", &metadata.get_artist()?);
-                    assert!(metadata.get_album().is_err());
                     assert_eq!("1", &metadata.get_disc()?);
                     assert_eq!("1", &metadata.get_track()?);
                     assert_eq!("Title", &metadata.get_title()?);
                     assert_eq!(ext, &metadata.get_ext());
+
+                    assert!(matches!(
+                        metadata.get_album(),
+                        Err(Error::MissingTag { .. })
+                    ));
 
                     Ok(())
                 }

@@ -15,23 +15,24 @@
 // You should have received a copy of the GNU General Public License
 // along with muso.  If not, see <http://www.gnu.org/licenses/>.
 
+mod cli;
 mod error;
 mod logger;
 
-use std::borrow::Cow;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::str::FromStr;
 
-use clap::{App, Arg, ArgMatches};
+use clap::Clap;
 use human_panic::setup_panic;
-use libmuso::config::Config;
-use libmuso::format::ParsedFormat;
-use libmuso::sorting::{sort_folder, Options};
-use libmuso::utils;
-use libmuso::watcher::Watcher;
+use muso::config::Config;
+use muso::format::ParsedFormat;
+use muso::sorting::{sort_folder, Options};
+use muso::utils;
+use muso::watcher::Watcher;
 
+use crate::cli::{CliArgs, SubCommand};
 use crate::error::Error;
 use crate::logger::init_logger;
 
@@ -58,7 +59,11 @@ fn load_config(path: impl AsRef<Path>) -> AnyResult<Config> {
     Ok(Config::from_path(path)?)
 }
 
-fn build_options<'a>(matches: &ArgMatches, config: &Config) -> AnyResult<(PathBuf, Options<'a>)> {
+/*
+fn build_options(
+    matches: &ArgMatches,
+    config: &Config,
+) -> AnyResult<(PathBuf, Options<ParsedFormat>)> {
     let working_path = matches
         .value_of_os("path")
         .map_or(env::current_dir()?, |path| Path::new(path).to_path_buf());
@@ -78,7 +83,7 @@ fn build_options<'a>(matches: &ArgMatches, config: &Config) -> AnyResult<(PathBu
     let remove_empty = matches.is_present("rm-empty");
 
     let options = Options {
-        format: Cow::Owned(format),
+        format,
         dryrun,
         recursive,
         exfat_compat,
@@ -87,12 +92,14 @@ fn build_options<'a>(matches: &ArgMatches, config: &Config) -> AnyResult<(PathBu
 
     Ok((working_path, options))
 }
+*/
 
-fn run(app: App) -> AnyResult<()> {
-    let matches = app.get_matches();
+fn run(opts: CliArgs) -> AnyResult<()> {
+    let config = opts.config.unwrap_or_else(utils::default_config_path);
+    let config = load_config(config)?;
 
-    match matches.subcommand() {
-        ("copy-service", _) => {
+    match opts.cmd {
+        SubCommand::CopyService => {
             cfg_if::cfg_if! {
                 if #[cfg(feature = "standalone")] {
                     utils::generate_resource(utils::Resource::Service, Some(include_str!("../share/muso.service")))?;
@@ -102,18 +109,23 @@ fn run(app: App) -> AnyResult<()> {
             };
         }
 
-        ("watch", Some(matches)) => {
-            let config = matches
-                .value_of_os("config")
-                .map(|p| Path::new(p).to_path_buf())
-                .unwrap_or_else(utils::default_config_path);
+        SubCommand::Watch => Watcher::new(config).watch()?,
 
-            let config = load_config(config)?;
-            let watcher = Watcher::new(config);
+        SubCommand::Sort {
+            path,
+            format,
+            dryrun,
+            recursive,
+            remove_empty,
+            exfat_compat,
+        } => {}
 
-            watcher.watch()?
-        }
+        #[cfg(feature = "sync")]
+        SubCommand::Sync => {}
+    }
 
+    /*
+    match matches.subcommand() {
         ("sort", Some(matches)) => {
             let config = matches
                 .value_of_os("config")
@@ -145,6 +157,7 @@ fn run(app: App) -> AnyResult<()> {
 
         _ => {}
     }
+    */
 
     Ok(())
 }
@@ -153,85 +166,13 @@ fn main() {
     setup_panic!();
     init_logger().unwrap();
 
-    let app = App::new("muso")
-        .version(VERSION)
-        .author(AUTHORS)
-        .about(ABOUT)
-        .subcommand(App::new("copy-service").about("Copy service file to systemd user config dir"))
-        .subcommand(
-            App::new("watch")
-                .about("Watch and sort new files in the specified libraries in the config file")
-                .arg(
-                    Arg::with_name("config")
-                        .short("c")
-                        .long("config")
-                        .value_name("path")
-                        .help("Custom config file path"),
-                ),
-        )
-        .subcommand(
-            App::new("sort")
-                .about("Sort a music directory")
-                .arg(
-                    Arg::with_name("path")
-                        .required(false)
-                        .value_name("path")
-                        .help("Working path to sort"),
-                )
-                .arg(
-                    Arg::with_name("format")
-                        .short("f")
-                        .long("format")
-                        .value_name("string")
-                        .help("Custom format string"),
-                )
-                .arg(
-                    Arg::with_name("config")
-                        .short("c")
-                        .long("config")
-                        .value_name("path")
-                        .help("Custom config file path"),
-                )
-                .arg(
-                    Arg::with_name("dryrun")
-                        .short("d")
-                        .long("dryrun")
-                        .help("Don't create neither move anything"),
-                )
-                .arg(
-                    Arg::with_name("recursive")
-                        .short("r")
-                        .long("recursive")
-                        .help("Search for files recursively"),
-                )
-                .arg(
-                    Arg::with_name("rm-empty")
-                        .long("rm-empty")
-                        .help("Remove any empty directory found while sorting"),
-                )
-                .arg(
-                    Arg::with_name("exfatcompat")
-                        .long("exfat-compat")
-                        .help("Maintain names compatible with FAT32"),
-                ),
-        );
-
-    let app = {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "sync")] {
-                app
-                    .subcommand(App::new("sync").about("Sync your music to your Android device"))
-            } else {
-                app
-            }
-        }
-    };
-
-    process::exit(match run(app) {
+    let opts = CliArgs::parse();
+    process::exit(match run(opts) {
         Err(e) => {
             log::error!("{}", e);
             1
         }
+
         Ok(_) => 0,
     })
 }

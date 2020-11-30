@@ -6,16 +6,15 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
-use libmtp_rs::object::AsObjectId;
-use libmtp_rs::storage::Storage;
 use serde::{Deserialize, Serialize};
+use try_block::try_block;
 use walkdir::WalkDir;
 
 use self::sha256::Sha256Sum;
 use crate::Result;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum DevType {
+pub enum HostType {
     Primary,
     Replica,
 }
@@ -27,41 +26,15 @@ pub enum Diff<T> {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum SyncPath {
-    PathBuf(PathBuf),
-    MtpPath(Vec<u32>),
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SyncInfo {
-    dev_type: DevType,
-    paths: HashMap<Sha256Sum, SyncPath>,
+    dev_type: HostType,
+    paths: HashMap<Sha256Sum, PathBuf>,
     modification_date: DateTime<Utc>,
 }
 
 impl SyncInfo {
-    pub fn init_on_primary(root: impl AsRef<Path>) -> Result<Self> {
-        let mut paths = HashMap::new();
-        let walkdir = WalkDir::new(root).into_iter().filter_map(|e| e.ok());
-
-        for entry in walkdir {
-            let path = entry.path();
-
-            if let Ok(sha256sum) = Sha256Sum::from_file(path) {
-                paths.insert(sha256sum, SyncPath::PathBuf(path.to_path_buf()));
-            }
-        }
-
-        Ok(SyncInfo {
-            dev_type: DevType::Primary,
-            paths,
-            modification_date: Utc::now(),
-        })
-    }
-
-    pub fn init_on_replica(storage: Storage, root: impl AsObjectId) -> Result<Self> {
-        todo!()
-    }
+    // 500 Kb buffer size
+    pub const MAX_NEEDED_BYTES: usize = 500 * 1024;
 
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {
         let mut file = File::open(path)?;
@@ -87,21 +60,45 @@ impl SyncInfo {
         Ok(bincode::deserialize(bytes.as_ref())?)
     }
 
-    pub fn differences<'a>(
-        &'a self,
-        replica: &'a Self,
-    ) -> Vec<Diff<(&'a Sha256Sum, &'a SyncPath)>> {
+    pub fn init_on_primary(root: impl AsRef<Path>) -> Result<Self> {
+        let mut paths = HashMap::new();
+        let walkdir = WalkDir::new(root).into_iter().filter_map(|e| e.ok());
+
+        for entry in walkdir {
+            let path = entry.path();
+
+            let sha256sum: Result<Sha256Sum> = try_block! {
+                let mut file = File::open(&path)?;
+                let mut bytes = [0u8; Self::MAX_NEEDED_BYTES];
+                let len = file.read(&mut bytes)?;
+
+                Ok(Sha256Sum::from_bytes(&bytes[..len]))
+            };
+
+            if let Ok(sha256sum) = sha256sum {
+                paths.insert(sha256sum, path.to_path_buf());
+            }
+        }
+
+        Ok(SyncInfo {
+            dev_type: HostType::Primary,
+            paths,
+            modification_date: Utc::now(),
+        })
+    }
+
+    pub fn differences<'a>(&'a self, replica: &'a Self) -> Vec<Diff<(&'a Sha256Sum, &'a Path)>> {
         let mut diffs = Vec::new();
 
         for (primary_key, primary_value) in &self.paths {
             if !replica.paths.contains_key(primary_key) {
-                diffs.push(Diff::Added((primary_key, primary_value)));
+                diffs.push(Diff::Added((primary_key, primary_value.as_path())));
             }
         }
 
         for (replica_key, replica_value) in &self.paths {
             if !self.paths.contains_key(replica_key) {
-                diffs.push(Diff::Removed((replica_key, replica_value)));
+                diffs.push(Diff::Removed((replica_key, replica_value.as_path())));
             }
         }
 

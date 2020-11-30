@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::borrow::Borrow;
 use std::path::Path;
 use std::{fs, path::PathBuf};
 
@@ -8,8 +8,11 @@ use crate::utils;
 use crate::{Error, Result};
 
 #[derive(Debug, Clone)]
-pub struct Options<'a> {
-    pub format: Cow<'a, ParsedFormat>,
+pub struct Options<P>
+where
+    P: Borrow<ParsedFormat>,
+{
+    pub format: P,
     pub dryrun: bool,
     pub recursive: bool,
     pub exfat_compat: bool,
@@ -23,10 +26,11 @@ pub struct SortReport {
     pub new_paths: Vec<PathBuf>,
 }
 
-pub fn sort_folder<R, D>(root: R, dir: D, options: &Options) -> Result<SortReport>
+pub fn sort_folder<R, D, P>(root: R, dir: D, options: &Options<P>) -> Result<SortReport>
 where
     R: AsRef<Path>,
     D: AsRef<Path>,
+    P: Borrow<ParsedFormat>,
 {
     let mut report = SortReport {
         success: 0,
@@ -101,10 +105,11 @@ where
     Ok(report)
 }
 
-pub fn sort_file<R, F>(root: R, file: F, options: &Options) -> Result<PathBuf>
+pub fn sort_file<R, F, P>(root: R, file: F, options: &Options<P>) -> Result<PathBuf>
 where
     R: AsRef<Path>,
     F: AsRef<Path>,
+    P: Borrow<ParsedFormat>,
 {
     if options.dryrun {
         log::info!("Working on (dryrun): \"{}\"", file.as_ref().display());
@@ -113,7 +118,10 @@ where
     }
 
     let metadata = Metadata::from_path(&file)?;
-    let new_path = options.format.build_path(&metadata, options.exfat_compat)?;
+    let new_path = options
+        .format
+        .borrow()
+        .build_path(&metadata, options.exfat_compat)?;
 
     if !options.dryrun {
         let new_path = root.as_ref().join(&new_path);

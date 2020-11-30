@@ -31,7 +31,6 @@ pub enum Error {
     #[error("Tag property {tag} is missing!")]
     MissingTag { tag: String },
 
-    #[cfg(not(feature = "standalone"))]
     #[error("Resource \"{path}\" was not found!")]
     ResourceNotFound { path: String },
 
