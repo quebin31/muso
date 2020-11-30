@@ -20,7 +20,7 @@ mod error;
 mod logger;
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process;
 use std::str::FromStr;
 
@@ -35,10 +35,6 @@ use muso::watcher::Watcher;
 use crate::cli::{CliArgs, SubCommand};
 use crate::error::Error;
 use crate::logger::init_logger;
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
-const ABOUT: &str = env!("CARGO_PKG_DESCRIPTION");
 
 pub type AnyResult<T> = std::result::Result<T, anyhow::Error>;
 
@@ -58,41 +54,6 @@ fn load_config(path: impl AsRef<Path>) -> AnyResult<Config> {
 
     Ok(Config::from_path(path)?)
 }
-
-/*
-fn build_options(
-    matches: &ArgMatches,
-    config: &Config,
-) -> AnyResult<(PathBuf, Options<ParsedFormat>)> {
-    let working_path = matches
-        .value_of_os("path")
-        .map_or(env::current_dir()?, |path| Path::new(path).to_path_buf());
-
-    let format = matches
-        .value_of("format")
-        .map_or(config.search_format(&working_path).cloned(), |f| {
-            ParsedFormat::from_str(f).ok()
-        })
-        .unwrap_or_else(|| {
-            ParsedFormat::from_str("{artist}/{album}/{track} - {title}.{ext}").unwrap()
-        });
-
-    let dryrun = matches.is_present("dryrun");
-    let recursive = matches.is_present("recursive");
-    let exfat_compat = matches.is_present("exfatcompat");
-    let remove_empty = matches.is_present("rm-empty");
-
-    let options = Options {
-        format,
-        dryrun,
-        recursive,
-        exfat_compat,
-        remove_empty,
-    };
-
-    Ok((working_path, options))
-}
-*/
 
 fn run(opts: CliArgs) -> AnyResult<()> {
     let config = opts.config.unwrap_or_else(utils::default_config_path);
@@ -118,25 +79,26 @@ fn run(opts: CliArgs) -> AnyResult<()> {
             recursive,
             remove_empty,
             exfat_compat,
-        } => {}
+        } => {
+            let path = path.unwrap_or(env::current_dir()?);
+            let format = format
+                .map_or(config.search_format(&path).cloned(), |s| {
+                    ParsedFormat::from_str(&s).ok()
+                })
+                .unwrap_or_else(|| {
+                    ParsedFormat::from_str("{artist}/{album}/{track} - {title}.{ext}").unwrap()
+                });
 
-        #[cfg(feature = "sync")]
-        SubCommand::Sync => {}
-    }
+            let options = Options {
+                format,
+                dryrun,
+                recursive,
+                exfat_compat,
+                remove_empty,
+            };
 
-    /*
-    match matches.subcommand() {
-        ("sort", Some(matches)) => {
-            let config = matches
-                .value_of_os("config")
-                .map(|p| Path::new(p).to_path_buf())
-                .unwrap_or_else(utils::default_config_path);
-
-            let config = load_config(config)?;
-            let (working_path, options) = build_options(&matches, &config)?;
-
-            if working_path.is_dir() {
-                match sort_folder(&working_path, &working_path, &options) {
+            if path.is_dir() {
+                match sort_folder(&path, &path, &options) {
                     Ok(report) => log::info!(
                         "Done: {} successful out of {} ({} failed)",
                         report.success,
@@ -148,16 +110,16 @@ fn run(opts: CliArgs) -> AnyResult<()> {
                 }
             } else {
                 let err = Error::InvalidRoot {
-                    path: working_path.display().to_string(),
+                    path: path.display().to_string(),
                 };
 
                 return Err(err.into());
             }
         }
 
-        _ => {}
+        #[cfg(feature = "sync")]
+        SubCommand::Sync => {}
     }
-    */
 
     Ok(())
 }
