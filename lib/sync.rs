@@ -1,4 +1,5 @@
 pub mod listener;
+pub mod rpc;
 pub mod sha256;
 
 use std::collections::HashMap;
