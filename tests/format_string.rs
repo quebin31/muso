@@ -5,9 +5,9 @@ macro_rules! define_tests_for {
             use std::path::PathBuf;
             use std::str::FromStr;
 
-            use libmuso::format::ParsedFormat;
-            use libmuso::metadata::Metadata;
-            use libmuso::{Error, Result};
+            use muso::format::ParsedFormat;
+            use muso::metadata::Metadata;
+            use muso::{Error, Result};
 
             #[test]
             fn complete_with_ok_format() -> Result<()> {
