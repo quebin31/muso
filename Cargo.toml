@@ -24,6 +24,10 @@ dirs = "3.0.1"
 human-panic = "1.0.3"
 id3 = "0.5.1"
 infer = "0.3.1"
+jsonrpc-core = {version = "15.1.0", optional = true}
+jsonrpc-core-client = {version = "15.1.0", optional = true}
+jsonrpc-derive = {version = "15.1.0", optional = true}
+jsonrpc-http-server = {version = "15.1.0", optional = true}
 lewton = "0.10.1"
 log = "0.4.11"
 metaflac = "0.2.4"
@@ -54,4 +58,4 @@ text_io = "0.1.8"
 [features]
 default = []
 standalone = []
-sync = ["sha2", "walkdir", "bincode", "ssh2"]
+sync = ["sha2", "walkdir", "bincode", "ssh2", "jsonrpc-core", "jsonrpc-core-client", "jsonrpc-derive", "jsonrpc-http-server"]
