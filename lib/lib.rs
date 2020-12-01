@@ -99,4 +99,15 @@ pub enum Error {
     #[cfg(feature = "sync")]
     #[error("Invalid diff between states of same host type")]
     InvalidStateDiff,
+
+    #[cfg(feature = "sync")]
+    #[error("SSH2 error (source: {source})")]
+    Ssh2Error {
+        #[from]
+        source: ssh2::Error,
+    },
+
+    #[cfg(feature = "sync")]
+    #[error("Failed to authenticate on ssh client")]
+    SshAuthFail,
 }
