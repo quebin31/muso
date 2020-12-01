@@ -12,8 +12,8 @@ pub struct Listener {
 }
 
 impl Listener {
-    pub fn bind<A: ToSocketAddrs>(address: A) -> Result<Self> {
-        let socket = UdpSocket::bind(address)?;
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> Result<Self> {
+        let socket = UdpSocket::bind(addr)?;
         Ok(Self { socket })
     }
 

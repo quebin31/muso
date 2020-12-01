@@ -14,6 +14,11 @@ pub trait Rpc {
     fn version(&self) -> RpcResult<String> {
         Ok(crate_version!().to_string())
     }
+
+    #[rpc(name = "build_replica_db")]
+    fn build_replica_db(&self, replica_addr: String) -> RpcResult<()> {
+        todo!()
+    }
 }
 
 pub struct RpcImpl;
@@ -30,8 +35,8 @@ pub struct RpcServer {
 }
 
 impl RpcServer {
-    pub fn bind<A: ToSocketAddrs>(address: A) -> Result<Self> {
-        let addr = address
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> Result<Self> {
+        let addr = addr
             .to_socket_addrs()?
             .next()
             .ok_or_else(|| Error::InvalidAddress)?;
