@@ -93,6 +93,10 @@ pub enum Error {
     },
 
     #[cfg(feature = "sync")]
-    #[error("Invalid address to build JSON-RPC server")]
+    #[error("Received invalid socket address")]
     InvalidAddress,
+
+    #[cfg(feature = "sync")]
+    #[error("Invalid diff between states of same host type")]
+    InvalidStateDiff,
 }
