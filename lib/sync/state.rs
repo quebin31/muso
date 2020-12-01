@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::net::ToSocketAddrs;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use ssh2::Session;
 use try_block::try_block;
 use walkdir::WalkDir;
 
@@ -92,7 +93,18 @@ impl State {
     where
         A: ToSocketAddrs,
     {
-        todo!()
+        let tcp_stream = TcpStream::connect(addr)?;
+        let mut session = Session::new()?;
+        session.set_tcp_stream(tcp_stream);
+        session.handshake()?;
+
+        session.userauth_password("musosync", "musosyncpass")?;
+        if !session.authenticated() {
+            return Err(Error::SshAuthFail);
+        }
+
+        let sftp = session.sftp()?;
+        todo!("walkdir sftp")
     }
 
     pub fn differences<'a>(&'a self, other: &'a Self) -> Result<Differences> {
