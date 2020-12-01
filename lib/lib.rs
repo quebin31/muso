@@ -101,7 +101,7 @@ pub enum Error {
     InvalidStateDiff,
 
     #[cfg(feature = "sync")]
-    #[error("SSH2 error (source: {source})")]
+    #[error("Ssh2 error (source: {source})")]
     Ssh2Error {
         #[from]
         source: ssh2::Error,
