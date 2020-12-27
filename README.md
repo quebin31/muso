@@ -31,7 +31,7 @@
 
 **muso** is a CLI tool that helps you to keep your music folder sorted. It's
 designed to be simple and fast, but also powerful and fully automated. Currently 
-**muso** supports MP3, FLAC and OGG.
+**muso** supports MP3, FLAC, OGG, M4A and M4P.
 
 ## Building
 To build **muso** yourself you need at least Rust 1.41. If you aren't going 
