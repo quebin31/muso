@@ -73,7 +73,7 @@ impl Metadata {
     fn from_id3(path: impl AsRef<Path>) -> Result<Self> {
         let tag = match id3::Tag::read_from_path(path) {
             Ok(tag) => tag,
-            Err(err) => err.partial_tag.clone().ok_or_else(|| err)?,
+            Err(err) => err.partial_tag.clone().ok_or(err)?,
         };
 
         let artist = if let Some(artist) = tag.album_artist() {

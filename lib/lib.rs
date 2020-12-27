@@ -5,9 +5,6 @@ pub mod sorting;
 pub mod utils;
 pub mod watcher;
 
-#[cfg(feature = "sync")]
-pub mod sync;
-
 use std::io;
 use thiserror::Error;
 
@@ -84,30 +81,4 @@ pub enum Error {
         #[from]
         source: notify::Error,
     },
-
-    #[cfg(feature = "sync")]
-    #[error("Bincode error (source: {source})")]
-    BincodeError {
-        #[from]
-        source: bincode::Error,
-    },
-
-    #[cfg(feature = "sync")]
-    #[error("Received invalid socket address")]
-    InvalidAddress,
-
-    #[cfg(feature = "sync")]
-    #[error("Invalid diff between states of same host type")]
-    InvalidStateDiff,
-
-    #[cfg(feature = "sync")]
-    #[error("Ssh2 error (source: {source})")]
-    Ssh2Error {
-        #[from]
-        source: ssh2::Error,
-    },
-
-    #[cfg(feature = "sync")]
-    #[error("Failed to authenticate on ssh client")]
-    SshAuthFail,
 }
