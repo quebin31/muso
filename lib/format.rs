@@ -129,7 +129,7 @@ impl ParsedFormat {
 
                             BasicComponent::Placeholder(p) => {
                                 let s = Self::get_from_metadata(metadata, *p)?
-                                    .ok_or(Error::OptionalInDir)?;
+                                    .ok_or_else(|| Error::OptionalInDir)?;
 
                                 path.push_str(&Self::replace(s, exfat_compat));
                             }
