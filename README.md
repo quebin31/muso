@@ -18,7 +18,7 @@
 -->
 
 <p align="center">
-    <!--  Go new lines brrrr -->
+    <!--  New lines go brrrr -->
     <br>
     <br>
     <image src="logo/muso.png" alt="muso"></image>
@@ -127,7 +127,7 @@ They are used to provide different options, to different folders.
 - `$HOME/.config/muso/config.toml`
 
 It's also possible to indicate a custom path for config file with the
-`-C/--config` option. Config file is primary used when running in *watcher*
+`-c/--config` option. Config file is primary used when running in *watcher*
 mode, but it's also able to provide a default *format string* for certain
 folders while running in *oneshot* mode. For example, in the [default config
 file](share/config.toml) the default library specifies a format and a list of
@@ -142,28 +142,21 @@ Below we have the output of `muso --help`, which explains each option or flag av
 
 ```
 USAGE:
-    muso [FLAGS] [OPTIONS] [path]
+    muso [OPTIONS] <SUBCOMMAND>
 
 FLAGS:
-        --copy-service    Copy service file to systemd user config dir, nothing else
-    -d, --dryrun          Don't create neither move anything
-        --exfat-compat    Maintain names compatible with FAT32
-    -h, --help            Prints help information
-    -r, --recursive       Search for files recursively
-    -V, --version         Prints version information
-    -w, --watch           Watch libraries present in config
+    -h, --help       Prints help information
+    -V, --version    Prints version information
 
 OPTIONS:
-    -C, --config <config>    Custom config file location
-    -f, --format <format>    Custom format string
+    -c, --config <config>    Path to custom config file
 
-ARGS:
-    <path>    Working path to sort
+SUBCOMMANDS:
+    copy-service    Copy service file to systemd user config dir
+    help            Prints this message or the help of the given subcommand(s)
+    sort            Sort a music directory
+    watch           Watch libraries and sort added files
 ```
-
-Note about `--copy--service`, it'll only copy service file to systemd user config 
-dir, and nothing else. **muso** won't do it's usual job of sorting and will fail
-if other flags are provided.
 
 ### Oneshot
 By the default, **muso** will run on the current working dir, but you can
@@ -183,9 +176,9 @@ libraries = [ 'default' ]
 ### Systemd service
 It's recommended to invoke the *watcher* mode using the provided [service
 file](share/muso.service) for `systemd`, this way you can run **muso**
-automatically on boot. Service file should be run on user level (`systemd
+automatically on boot. Service file should be run on user level (`systemctl
 --user`). The easiest way to copy the service file is running **muso** with
-`--copy-service`, that's all.
+`copy-service` subcommand.
 
 ## License
 
