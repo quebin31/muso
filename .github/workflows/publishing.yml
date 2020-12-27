@@ -42,7 +42,7 @@ jobs:
       - name: Set VERSION environment variable
         run: |
           version=$(echo $GITHUB_REF | cut -d '/' -f3)
-          echo "::set-env name=VERSION::$version"
+          echo "VERSION=$version" >> $GITHUB_ENV
       - name: Update PKGBUILD
         run: |
           sha256sum=$(sha256sum release.tar.gz | cut -d ' ' -f1)
