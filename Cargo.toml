@@ -2,7 +2,7 @@
 authors = ["Kevin <quebin31@gmail.com>"]
 edition = "2018"
 name = "muso"
-version = "1.5.2"
+version = "2.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
