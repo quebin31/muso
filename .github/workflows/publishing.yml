@@ -64,7 +64,7 @@ jobs:
           git config --local user.email "quebin31@gmail.com"
           git config --local user.name "Kevin (CI/CD)"
           git commit -m "updver: $VERSION" -a 
-          git push origin HEAD:refs/heads/master
+          git push origin HEAD:refs/heads/main
         env:
           VERSION: ${{ env.VERSION }}
       - name: Publish to GitHub
