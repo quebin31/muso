@@ -30,7 +30,7 @@ pub fn default_config_path() -> PathBuf {
 pub fn default_service_path() -> PathBuf {
     dirs::config_dir()
         .unwrap()
-        .join("systemd/muso/muso.service")
+        .join("systemd/user/muso.service")
 }
 
 pub fn maybe_create_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
