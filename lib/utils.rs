@@ -62,8 +62,8 @@ pub fn generate_resource(res: Resource, default: Option<&str>) -> Result<()> {
     log::info!("Generating {} file", name);
 
     let shared = match res {
-        Resource::Config => Path::new("/usr/share/muso/muso.service"),
-        Resource::Service => Path::new("/usr/share/muso/config.toml"),
+        Resource::Config => Path::new("/usr/share/muso/config.toml"),
+        Resource::Service => Path::new("/usr/share/muso/muso.service"),
     };
 
     if !shared.exists() {
